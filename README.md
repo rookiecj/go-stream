@@ -1,0 +1,2 @@
+# go-stream
+Go LazyStream

@@ -42,7 +42,7 @@ func TestCollectAs(t *testing.T) {
 				s:      ToStream(emptyArr),
 				target: []myStruct{},
 			},
-			want: emptyArr,
+			want: []myStruct{},
 		},
 		{
 			name: "empty slice",
@@ -50,7 +50,7 @@ func TestCollectAs(t *testing.T) {
 				s:      ToStream(emptySlice),
 				target: []myStruct{},
 			},
-			want: emptySlice,
+			want: []myStruct{},
 		},
 		{
 			name: "filter_map",

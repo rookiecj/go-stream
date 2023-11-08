@@ -6,27 +6,17 @@ import "reflect"
 // which means it is lazy, and the operations are not executed until terminal operation is called
 // Stream is not thread safe
 type Stream[T any] struct {
-	slice []T
-	idx   int // full index
-	next  func() bool
-	get   func() T
+	idx  int // full index
+	next func() bool
+	get  func() T
 }
 
 // ToStream converts slice to Stream
 func ToStream[T any](arr []T) *Stream[any] {
-	stream := Stream[any]{
-		slice: func() []any {
-			var result []any
-			for _, v := range arr {
-				result = append(result, v)
-			}
-			return result
-		}(),
-		idx: -1,
-	}
-
+	stream := new(Stream[any])
+	stream.idx = -1
 	stream.next = func() bool {
-		if stream.idx+1 == len(stream.slice) {
+		if stream.idx+1 == len(arr) {
 			return false
 		}
 		stream.idx++
@@ -34,9 +24,9 @@ func ToStream[T any](arr []T) *Stream[any] {
 	}
 
 	stream.get = func() any {
-		return stream.slice[stream.idx]
+		return arr[stream.idx]
 	}
-	return &stream
+	return stream
 }
 
 //

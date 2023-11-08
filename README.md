@@ -71,7 +71,8 @@ There 3 main operations:
 
 Builder operations build a `Stream` from various sources like slice and array.
 
-- [X] ToStream 
+- [X] ToStream
+- [ ] FromSlice 
 - [ ] FromChan
 
 ### Intermediate operations
@@ -84,6 +85,7 @@ Intermediate operations generate new stream which consume data from upstream and
 - [ ] FlatMapConcurrent
 - [X] Take, Skip
 - [X] Distinct
+- [ ] Zip, ZipWith
 
 ### Terminal operations
 
@@ -96,6 +98,8 @@ Terminal operations are collectors which trigger streams to work. and return the
 
 ## TODO
 
+- [X] make ToStream lazy
+- [ ] add more Builders 
 - [ ] Stream to interface
 - [ ] add more intermediate operations
 - [ ] add more terminal operations

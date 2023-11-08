@@ -116,3 +116,36 @@ func TestStream_FlatMapConCat(t *testing.T) {
 		})
 	}
 }
+
+func TestStream_Distinct(t *testing.T) {
+
+	arr := []myStruct{
+		{"a"},
+		{"a"},
+		{"b"},
+		{"c"},
+		{"a"},
+		{"b"},
+	}
+
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		want []T
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "distinct",
+			s:    ToStream(arr),
+			want: []myStruct{{"a"}, {"b"}, {"c"}, {"a"}, {"b"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var target []myStruct
+			if got := CollectAs(tt.s.Distinct(), target); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Distinct() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -13,7 +13,7 @@ Install as follows:
 go get github.com/rookiecj/go-stream
 ```
 
-and uses as follow:
+and uses as follows:
 ```go
 package main 
 
@@ -83,7 +83,7 @@ Intermediate operations generate new stream which consume data from upstream and
 - [x] FlatMapConcat
 - [ ] FlatMapConcurrent
 - [X] Take, Skip
-- [ ] Distinct
+- [X] Distinct
 
 ### Terminal operations
 
@@ -96,6 +96,7 @@ Terminal operations are collectors which trigger streams to work. and return the
 
 ## TODO
 
+- [ ] Stream to interface
 - [ ] add more intermediate operations
 - [ ] add more terminal operations
 - [ ] add doc

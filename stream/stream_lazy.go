@@ -1,5 +1,7 @@
 package stream
 
+import "reflect"
+
 // Stream uses iterator pattern
 // which means it is lazy, and the operations are not executed until terminal operation is called
 // Stream is not thread safe
@@ -148,6 +150,30 @@ func (s *Stream[any]) Skip(n int) *Stream[any] {
 			stream.idx++
 		}
 		return s.next()
+	}
+	stream.get = func() any {
+		return s.get()
+	}
+	return &stream
+}
+
+// Distinct returns a stream consisting of the subsequent distinct elements of this stream.
+// [a, a, b, c, a] => [a, b, c, a]
+func (s *Stream[any]) Distinct() *Stream[any] {
+	var stream Stream[any]
+	var old any
+	var first bool = true
+	stream.next = func() bool {
+		for s.next() {
+			v := s.get()
+			if first || !reflect.DeepEqual(old, v) {
+				old = v
+				first = false
+				return true
+			}
+			old = v
+		}
+		return false
 	}
 	stream.get = func() any {
 		return s.get()

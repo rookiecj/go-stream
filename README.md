@@ -15,6 +15,7 @@ go get github.com/rookiecj/go-stream
 
 and uses as follow:
 ```go
+package main 
 
 import (
 	"fmt"
@@ -70,13 +71,28 @@ There 3 main operations:
 
 Builder operations build a `Stream` from various sources like slice and array.
 
+- [X] ToStream 
+- [ ] FromChan
+
 ### Intermediate operations
 
 Intermediate operations generate new stream which consume data from upstream and apply operator on it.
 
+- [X] Filter
+- [x] Map
+- [x] FlatMapConcat
+- [ ] FlatMapConcurrent
+- [X] Take, Skip
+- [ ] Distinct
+
 ### Terminal operations
 
 Terminal operations are collectors which trigger streams to work. and return the result of the stream.
+
+- [X] ForEach, ForEachIndex
+- [X] CollectAs
+- [X] Reduce
+- [ ] Fold
 
 ## TODO
 

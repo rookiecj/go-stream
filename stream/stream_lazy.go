@@ -128,12 +128,14 @@ func (s *Stream[any]) Skip(n int) *Stream[any] {
 // terminal operations
 //
 
+// ForEach performs an action for each element of this stream.
 func (s *Stream[any]) ForEach(f func(any)) {
 	for s.next() {
 		f(s.get())
 	}
 }
 
+// ForEachIndex performs an action for each element of this stream.
 func (s *Stream[any]) ForEachIndex(f func(int, any)) {
 	idx := 0
 	for s.next() {
@@ -142,6 +144,7 @@ func (s *Stream[any]) ForEachIndex(f func(int, any)) {
 	}
 }
 
+// Reduce performs a reduction on the elements of this stream, using the provided identity value and an associative accumulation function, and returns the reduced value.
 func (s *Stream[any]) Reduce(f func(any, any) any) any {
 	var result any
 	for s.next() {
@@ -151,6 +154,7 @@ func (s *Stream[any]) Reduce(f func(any, any) any) any {
 	return result
 }
 
+// FindOr returns the first element of this stream matching the given predicate, or defvalue if no such element exists.
 func (s *Stream[any]) FindOr(f func(any) bool, defvalue any) any {
 	for s.next() {
 		v := s.get()
@@ -161,6 +165,7 @@ func (s *Stream[any]) FindOr(f func(any) bool, defvalue any) any {
 	return defvalue
 }
 
+// CollectAs returns a slice containing the elements of this stream.
 func CollectAs[T any](s *Stream[any], target []T) []T {
 	for s.next() {
 		v := s.get()

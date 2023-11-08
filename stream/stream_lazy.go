@@ -88,6 +88,37 @@ func (s *Stream[any]) MapIndex(f func(int, any) any) *Stream[any] {
 	return &stream
 }
 
+// FlatMapConcat returns a stream consisting of the results of
+// replacing each element of this stream with the contents of
+// a mapped stream produced by applying the provided mapping function to each element.
+func (s *Stream[any]) FlatMapConcat(f func(any) *Stream[any]) *Stream[any] {
+	var stream Stream[any]
+	var astream *Stream[any]
+	stream.next = func() bool {
+		if astream != nil && astream.next() {
+			return true
+		} else {
+			astream = nil
+			for astream == nil {
+				if !s.next() {
+					return false
+				}
+				astream = f(s.get())
+				if astream.next() {
+					return true
+				}
+				astream = nil
+			}
+			return false
+		}
+	}
+
+	stream.get = func() any {
+		return astream.get()
+	}
+	return &stream
+}
+
 // Take returns a stream consisting of the first n elements of this stream.
 func (s *Stream[any]) Take(n int) *Stream[any] {
 	var stream Stream[any]

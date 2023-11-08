@@ -149,3 +149,54 @@ func TestStream_Distinct(t *testing.T) {
 		})
 	}
 }
+
+func TestStream_ZipWith(t *testing.T) {
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+	}
+
+	arr2 := []myStruct{
+		{"1"},
+		{"2"},
+		{"3"},
+		{"4"},
+	}
+
+	type args struct {
+		other *Stream[any]
+		f     func(any, any) any
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args
+		want []T
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "zipwith",
+			s:    ToStream(arr1),
+			args: args{
+				other: ToStream(arr2),
+				f: func(ele1 any, ele2 any) any {
+					result := myStruct{
+						Name: ele1.(myStruct).Name + ele2.(myStruct).Name,
+					}
+					return result
+				},
+			},
+			want: []myStruct{{"a1"}, {"b2"}, {"c3"}, {"d4"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var target []myStruct
+			if got := CollectAs(tt.s.ZipWith(tt.args.other, tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ZipWith() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

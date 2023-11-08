@@ -171,6 +171,18 @@ func (s *Stream[any]) Distinct() *Stream[any] {
 	return &stream
 }
 
+// ZipWith returns a stream consisting of appling the given function to the elements of this stream and another stream.
+func (s *Stream[any]) ZipWith(other *Stream[any], f func(any, any) any) *Stream[any] {
+	var stream Stream[any]
+	stream.next = func() bool {
+		return s.next() && other.next()
+	}
+	stream.get = func() any {
+		return f(s.get(), other.get())
+	}
+	return &stream
+}
+
 //
 // terminal operations
 //

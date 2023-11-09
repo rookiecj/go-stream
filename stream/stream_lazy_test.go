@@ -150,6 +150,47 @@ func TestStream_Distinct(t *testing.T) {
 	}
 }
 
+func TestStream_DistinctBy(t *testing.T) {
+	arr := []myStruct{
+		{"a"},
+		{"a"},
+		{"b"},
+		{"c"},
+		{"a"},
+		{"b"},
+	}
+
+	type args struct {
+		cmp func(any, any) bool
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args
+		want []T
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "distinctBy with deepequal",
+			s:    ToStream(arr),
+			args: args{
+				cmp: func(old, v any) bool {
+					return reflect.DeepEqual(old, v)
+				},
+			},
+			want: []myStruct{{"a"}, {"b"}, {"c"}, {"a"}, {"b"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var target []myStruct
+			if got := CollectAs(tt.s.DistinctBy(tt.args.cmp), target); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("DistinctBy() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestStream_ZipWith(t *testing.T) {
 	arr1 := []myStruct{
 		{"a"},

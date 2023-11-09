@@ -150,13 +150,22 @@ func (s *Stream[any]) Skip(n int) *Stream[any] {
 // Distinct returns a stream consisting of the subsequent distinct elements of this stream.
 // [a, a, b, c, a] => [a, b, c, a]
 func (s *Stream[any]) Distinct() *Stream[any] {
+	return s.DistinctBy(func(old, v any) bool {
+		return reflect.DeepEqual(old, v)
+	})
+}
+
+// DistinctBy returns a stream consisting of the subsequent distinct elements of this stream.
+// [a, a, b, c, a] => [a, b, c, a]
+// cmd is a function to compare two elements, return true if they are equal
+func (s *Stream[any]) DistinctBy(cmp func(any, any) bool) *Stream[any] {
 	var stream Stream[any]
 	var old any
 	var first bool = true
 	stream.next = func() bool {
 		for s.next() {
 			v := s.get()
-			if first || !reflect.DeepEqual(old, v) {
+			if first || !cmp(old, v) {
 				old = v
 				first = false
 				return true
@@ -170,6 +179,19 @@ func (s *Stream[any]) Distinct() *Stream[any] {
 	}
 	return &stream
 }
+
+// // Zip returns a stream consisting of the elements of this stream and another stream.
+// // returns a stream of Pair[any, any]
+// func (s *Stream[any]) Zip(other *Stream[any]) *Stream[any] {
+// 	var stream Stream[any]
+// 	stream.next = func() bool {
+// 		return s.next() && other.next()
+// 	}
+// 	stream.get = func() any {
+// 		return []any{s.get(), other.get()}
+// 	}
+// 	return &stream
+// }
 
 // ZipWith returns a stream consisting of appling the given function to the elements of this stream and another stream.
 func (s *Stream[any]) ZipWith(other *Stream[any], f func(any, any) any) *Stream[any] {

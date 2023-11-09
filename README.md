@@ -84,7 +84,7 @@ Intermediate operations generate new stream which consume data from upstream and
 - [x] FlatMapConcat
 - [ ] FlatMapConcurrent
 - [X] Take, Skip
-- [X] Distinct
+- [X] Distinct, DistinctBy
 - [ ] Zip with Pair 
 - [X] ZipWith
 

@@ -315,15 +315,20 @@ func (s *Stream[any]) Reduce(reducer func(any, any) any) any {
 	return result
 }
 
+// Find returns the first element of this stream matching the given predicate
+func (s *Stream[any]) Find(predicate func(any) bool) (found any) {
+	return s.FindOr(predicate, found)
+}
+
 // FindOr returns the first element of this stream matching the given predicate, or defvalue if no such element exists.
-func (s *Stream[any]) FindOr(f func(any) bool, defvalue any) any {
+func (s *Stream[any]) FindOr(predicate func(any) bool, defvalue any) any {
 	if s == nil {
 		return defvalue
 	}
 
 	for s.next() {
 		v := s.get()
-		if f(v) {
+		if predicate(v) {
 			return v
 		}
 	}
@@ -346,4 +351,54 @@ func (s *Stream[any]) FindIndex(predicate func(any) bool) int {
 		}
 	}
 	return -1
+}
+
+// FindLast returns the last element of this stream matching the given predicate
+func (s *Stream[any]) FindLast(predicate func(any) bool) (found any) {
+	if s == nil {
+		return
+	}
+
+	for s.next() {
+		v := s.get()
+		if predicate(v) {
+			found = v
+		}
+	}
+	return
+}
+
+// FindLastOr returns the last element of this stream matching the given predicate,
+// or defvalue if no such element exists.
+func (s *Stream[any]) FindLastOr(predicate func(any) bool, defvalue any) (found any) {
+	if s == nil {
+		return defvalue
+	}
+
+	found = defvalue
+	for s.next() {
+		v := s.get()
+		if predicate(v) {
+			found = v
+		}
+	}
+	return
+}
+
+// FindLastIndex returns the index of the last element of this stream matching the given predicate.
+func (s *Stream[any]) FindLastIndex(predicate func(any) bool) (found int) {
+	if s == nil {
+		return -1
+	}
+
+	idx := -1
+	found = idx
+	for s.next() {
+		v := s.get()
+		idx++
+		if predicate(v) {
+			found = idx
+		}
+	}
+	return found
 }

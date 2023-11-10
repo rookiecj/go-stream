@@ -243,6 +243,24 @@ func (s *Stream[any]) Scan(init any, accumf func(acc any, ele any) any) *Stream[
 	return &stream
 }
 
+// OnEach returns a stream do nothing but visit each element of this stream.
+func (s *Stream[any]) OnEach(visit func(v any)) *Stream[any] {
+	if s == nil {
+		return s
+	}
+
+	var stream Stream[any]
+	stream.next = func() bool {
+		return s.next()
+	}
+	stream.get = func() any {
+		v := s.get()
+		visit(v)
+		return v
+	}
+	return &stream
+}
+
 //
 // terminal operations
 //

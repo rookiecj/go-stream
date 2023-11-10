@@ -87,6 +87,7 @@ Intermediate operations generate new stream which consume data from upstream and
 - [X] Distinct, DistinctBy
 - [ ] Zip with Pair 
 - [X] ZipWith
+- [ ] Scan
 - [ ] Window
 
 ### Terminal operations

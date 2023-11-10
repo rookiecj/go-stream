@@ -223,6 +223,26 @@ func (s *Stream[any]) ZipWith(other *Stream[any], f func(any, any) any) *Stream[
 	return &stream
 }
 
+// Scan returns a stream consisting of the accumlated results of applying the given function to the elements of this stream.
+//
+//	with [1, 2, 3, 4], init 0, accumf func(acc, i) { acc + i } produces [1, 3, 6, 10]
+func (s *Stream[any]) Scan(init any, accumf func(acc any, ele any) any) *Stream[any] {
+	if s == nil {
+		return s
+	}
+
+	var stream Stream[any]
+	acc := init
+	stream.next = func() bool {
+		return s.next()
+	}
+	stream.get = func() any {
+		acc = accumf(acc, s.get())
+		return acc
+	}
+	return &stream
+}
+
 //
 // terminal operations
 //

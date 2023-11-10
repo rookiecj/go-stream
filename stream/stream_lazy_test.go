@@ -373,3 +373,45 @@ func TestStream_Intermediates_NilReceiver(t *testing.T) {
 		})
 	}
 }
+
+func TestStream_Scan(t *testing.T) {
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+	}
+
+	init := myStruct{"!"}
+
+	type args[T any] struct {
+		init   T
+		accumf func(acc any, ele any) any
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args[T]
+		want []myStruct
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "Scan/add",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				init: init,
+				accumf: func(acc, ele any) any {
+					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				},
+			},
+			want: []myStruct{{"!a"}, {"!ab"}, {"!abc"}, {"!abcd"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CollectAs(tt.s.Scan(tt.args.init, tt.args.accumf), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Scan() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

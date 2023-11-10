@@ -332,13 +332,21 @@ func (s *Stream[any]) Collect() (target []any) {
 	return
 }
 
-// Reduce performs a reduction on the elements of this stream, using the provided identity value and an associative accumulation function, and returns the reduced value.
-func (s *Stream[any]) Reduce(reducer func(any, any) any) any {
-	var result any
+// Reduce performs a reduction on the elements of this stream,
+// using the provided identity value and an associative accumulation function,
+// and returns the reduced value.
+// [a, b, c, d] => f(f(f(a, b), c), d)
+// if the stream is empty returns nil
+func (s *Stream[any]) Reduce(reducer func(acc any, ele any) any) (result any) {
 	if s == nil {
-		return result
+		return
 	}
-
+	if s.next() {
+		result = s.get()
+	} else {
+		// nothing to return
+		return
+	}
 	for s.next() {
 		v := s.get()
 		result = reducer(result, v)

@@ -743,3 +743,99 @@ func TestStream_Fold_Reduce_As_Array(t *testing.T) {
 		})
 	}
 }
+
+func TestStream_Reduce(t *testing.T) {
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+	}
+
+	type args[T any] struct {
+		reducer func(acc any, ele any) any
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args[T]
+		want T
+	}
+
+	tests := []testCase[myStruct]{
+		//{
+		//	name: "reduce empty return nil with no type",
+		//	s:    FromSlice(emptySlice),
+		//	args: args[myStruct]{
+		//		reducer: func(acc any, ele any) any {
+		//			// won't be called
+		//			return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+		//		},
+		//	},
+		//	want: nilStruct, // this should be nil to interface{}
+		//},
+		{
+			name: "reduce 1",
+			s:    FromSlice(arr1[:1]),
+			args: args[myStruct]{
+				reducer: func(acc any, ele any) any {
+					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				},
+			},
+			want: myStruct{"a"},
+		},
+		{
+			name: "reduce",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				reducer: func(acc any, ele any) any {
+					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				},
+			},
+			want: myStruct{"abcd"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotResult := tt.s.Reduce(tt.args.reducer); !reflect.DeepEqual(gotResult, tt.want) {
+				t.Errorf("Reduce() = %v, want %v", gotResult, tt.want)
+			}
+		})
+	}
+}
+
+func TestStream_Reduce_empty(t *testing.T) {
+	var emptySlice []myStruct
+
+	type args[T any] struct {
+		reducer func(acc any, ele any) any
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args[T]
+		//want T
+		want any // <- should be any
+	}
+
+	tests := []testCase[myStruct]{
+		{
+			name: "reduce empty return nil with no type",
+			s:    FromSlice(emptySlice),
+			args: args[myStruct]{
+				reducer: func(acc any, ele any) any {
+					// won't be called
+					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				},
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotResult := tt.s.Reduce(tt.args.reducer); !reflect.DeepEqual(gotResult, tt.want) {
+				t.Errorf("Reduce() = %v, want %v", gotResult, tt.want)
+			}
+		})
+	}
+}

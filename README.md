@@ -97,8 +97,8 @@ Terminal operations are collectors which trigger streams to work. and return the
 
 - [X] ForEach, ForEachIndex
 - [X] Collect
-- [X] Reduce
-- [ ] Fold
+- [ ] Reduce (Experimental)
+- [X] Fold
 - [X] Find/FindLast
 - [ ] All, Any
 

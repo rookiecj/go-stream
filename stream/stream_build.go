@@ -7,7 +7,22 @@ func FromSlice[T any](arr []T) *Stream[any] {
 	//	var nilReceiver *Stream[any]
 	//	return nilReceiver
 	//}
-	return FromVar(arr...)
+
+	stream := new(Stream[any])
+	stream.idx = -1
+	limit := len(arr)
+	stream.next = func() bool {
+		if stream.idx+1 == limit {
+			return false
+		}
+		stream.idx++
+		return true
+	}
+
+	stream.get = func() any {
+		return arr[stream.idx]
+	}
+	return stream
 }
 
 // FromVar build a Stream from variatic

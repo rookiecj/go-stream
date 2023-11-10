@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestFromSlice(t *testing.T) {
@@ -172,6 +173,12 @@ func TestFromChan(t *testing.T) {
 					close(tt.args.ch)
 				}
 			}()
+
+			// github action filed
+			// panic: send on closed chann
+			// Give time to the goroutine to run before the collection
+			time.Sleep(100 * time.Millisecond)
+
 			if got := CollectAs(FromChan(tt.args.ch), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromChan() = %v, want %v", got, tt.want)
 			}
@@ -238,11 +245,46 @@ func TestFromChan_WriteReadSequentially(t *testing.T) {
 
 }
 
+func TestFromChan_ReadOnClosedChannel(t *testing.T) {
+
+	worker := 5
+	jobs := make(chan int, 0)
+	done := make(chan bool, 0)
+
+	go func() {
+		fmt.Println("Source: Start")
+		for i := 0; i < worker; i++ {
+			//time.Sleep(100 * time.Millisecond)
+			fmt.Printf("Source: %d\n", i)
+			jobs <- i
+		}
+		fmt.Println("Source: Done")
+		// close channel before move on
+		close(jobs)
+	}()
+
+	time.Sleep(1 * time.Second)
+
+	go func() {
+		s := FromChan(jobs)
+		s.OnEach(func(ele any) {
+			fmt.Printf("ele: %d -> ", ele.(int))
+		}).Map(func(ele any) any {
+			return ele.(int) * 100
+		}).ForEach(func(ele any) {
+			fmt.Printf("got: %d\n", ele.(int))
+		})
+		done <- true
+	}()
+
+	<-done
+}
+
 func TestFromChan_ReadWriteConcurrently(t *testing.T) {
 
 	worker := 5
-	jobs := make(chan int, 1)
-	done := make(chan bool, 1)
+	jobs := make(chan int, 0)
+	done := make(chan bool, 0)
 
 	go func() {
 		fmt.Println("Source: Start")

@@ -103,7 +103,7 @@ Terminal operations are collectors which trigger streams to work. and return the
 - [ ] All, Any
 
 Slightly more type safe functions are:
-- [ ] ForEachAs, ForEachAsIndex
+- [X] ForEachAs, ForEachAsIndex
 - [X] CollectAs
 - [ ] ReduceAs
 - [ ] FoldAs

@@ -223,6 +223,37 @@ func (s *Stream[any]) ZipWith(other *Stream[any], f func(any, any) any) *Stream[
 	return &stream
 }
 
+// ZipWithPrev returns a stream consisting of appling the given function to the elements of this stream and its previous element.
+// the first element is ignored
+// [a, b, c, d] => [f(a, b), f(b, c), f(c, d)]
+func (s *Stream[any]) ZipWithPrev(f func(prev any, ele any) any) *Stream[any] {
+	if s == nil {
+		return s
+	}
+
+	var stream Stream[any]
+	var prev any
+	var first bool = true
+	stream.next = func() bool {
+		if !s.next() {
+			return false
+		}
+		if first {
+			first = false
+			prev = s.get()
+			return s.next()
+		}
+		return true
+	}
+	stream.get = func() any {
+		v := s.get()
+		result := f(prev, v)
+		prev = v
+		return result
+	}
+	return &stream
+}
+
 // Scan returns a stream consisting of the accumlated results of applying the given function to the elements of this stream.
 //
 //	with [1, 2, 3, 4], init 0, accumf func(acc, i) { acc + i } produces [1, 3, 6, 10]

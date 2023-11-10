@@ -87,6 +87,7 @@ Intermediate operations generate new stream which consume data from upstream and
 - [X] Distinct, DistinctBy
 - [ ] Zip with Pair 
 - [X] ZipWith
+- [ ] ZipWithPrev
 - [X] Scan
 - [ ] Window
 
@@ -99,6 +100,7 @@ Terminal operations are collectors which trigger streams to work. and return the
 - [X] Reduce
 - [ ] Fold
 - [X] Find/FindLast
+- [ ] All, Any
 
 Slightly more type safe functions are:
 - [ ] ForEachAs, ForEachAsIndex

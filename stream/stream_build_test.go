@@ -29,7 +29,7 @@ func TestFromSlice(t *testing.T) {
 	}
 	tests := []testCase[myStruct]{
 		{
-			name: "slice/empty",
+			name: "slice empty",
 			args: args[myStruct]{
 				s:      FromSlice(emptySlice),
 				target: []myStruct{},
@@ -45,7 +45,7 @@ func TestFromSlice(t *testing.T) {
 			want: []myStruct{{"a"}, {"bb"}, {"c"}, {"ddd"}, {"e"}},
 		},
 		{
-			name: "slice/fiter_map",
+			name: "slice fiter map",
 			args: args[myStruct]{
 				s: FromSlice(arr).Filter(func(v any) bool {
 					return len(v.(myStruct).Name) == 1
@@ -94,7 +94,7 @@ func TestFromVar(t *testing.T) {
 			want: []myStruct{{"a"}, {"bb"}, {"c"}, {"ddd"}, {"e"}},
 		},
 		{
-			name: "variatic/fiter_map",
+			name: "variatic fiter map",
 			args: args[myStruct]{
 				s: FromVar(myStruct{"a"}, myStruct{"bb"}, myStruct{"c"}, myStruct{"ddd"}, myStruct{"e"}).
 					Filter(func(v any) bool {
@@ -130,14 +130,14 @@ func TestFromChan(t *testing.T) {
 	}
 	tests := []testCase[myStruct]{
 		{
-			name: "chan/nil",
+			name: "chan nil",
 			args: args[myStruct]{
 				ch: nil,
 			},
 			want: []myStruct{},
 		},
 		{
-			name: "chan/empty",
+			name: "chan empty",
 			args: args[myStruct]{
 				ch: make(chan myStruct, 0),
 				source: func() []myStruct {
@@ -147,7 +147,7 @@ func TestFromChan(t *testing.T) {
 			want: []myStruct{},
 		},
 		{
-			name: "chan/1",
+			name: "chan 1",
 			args: args[myStruct]{
 				ch:     make(chan myStruct, 0),
 				source: []myStruct{{"a"}},
@@ -155,7 +155,7 @@ func TestFromChan(t *testing.T) {
 			want: []myStruct{{"a"}},
 		},
 		{
-			name: "chan/n",
+			name: "chan n",
 			args: args[myStruct]{
 				ch:     make(chan myStruct, 0),
 				source: []myStruct{{"a"}, {"b"}, {"c"}, {"d"}, {"e"}},

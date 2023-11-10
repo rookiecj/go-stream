@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type myStruct struct {
@@ -111,12 +112,94 @@ func TestStream_FlatMapConCat(t *testing.T) {
 	}
 	tests := []testCase[myStruct]{
 		{
-			name: "flatmap_concat",
+			name: "slice slice",
 			s:    FromSlice(arr),
 			args: args{
 				f: func(v any) *Stream[any] {
 					ms := v.(myStruct)
 					stream := FromSlice[myStruct]([]myStruct{ms, ms})
+					return stream
+				},
+			},
+			want: []myStruct{{"a"}, {"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}, {"d"}},
+		},
+		{
+			name: "slice variatic",
+			s:    FromSlice(arr),
+			args: args{
+				f: func(v any) *Stream[any] {
+					ms := v.(myStruct)
+					stream := FromVar[myStruct]([]myStruct{ms, ms}...)
+					return stream
+				},
+			},
+			want: []myStruct{{"a"}, {"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}, {"d"}},
+		},
+		{
+			name: "slice chan",
+			s:    FromSlice(arr),
+			args: args{
+				f: func(v any) *Stream[any] {
+					ch := make(chan myStruct, 0)
+					go func() {
+						ch <- v.(myStruct)
+						ch <- v.(myStruct)
+						close(ch)
+					}()
+					time.Sleep(100 * time.Millisecond)
+					stream := FromChan[myStruct](ch)
+					return stream
+				},
+			},
+			want: []myStruct{{"a"}, {"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}, {"d"}},
+		},
+		{
+			name: "chan slice",
+			s: func() *Stream[any] {
+				ch := make(chan myStruct, 0)
+				go func() {
+					for _, ele := range arr {
+						ch <- ele
+					}
+					close(ch)
+				}()
+				time.Sleep(100 * time.Millisecond)
+				stream := FromChan[myStruct](ch)
+				return stream
+			}(),
+			args: args{
+				f: func(v any) *Stream[any] {
+					ms := v.(myStruct)
+					stream := FromSlice[myStruct]([]myStruct{ms, ms})
+					return stream
+				},
+			},
+			want: []myStruct{{"a"}, {"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}, {"d"}},
+		},
+		{
+			name: "chan chan",
+			s: func() *Stream[any] {
+				ch := make(chan myStruct, 0)
+				go func() {
+					for _, ele := range arr {
+						ch <- ele
+					}
+					close(ch)
+				}()
+				time.Sleep(100 * time.Millisecond)
+				stream := FromChan[myStruct](ch)
+				return stream
+			}(),
+			args: args{
+				f: func(v any) *Stream[any] {
+					ch := make(chan myStruct, 0)
+					go func() {
+						ch <- v.(myStruct)
+						ch <- v.(myStruct)
+						close(ch)
+					}()
+					time.Sleep(100 * time.Millisecond)
+					stream := FromChan[myStruct](ch)
 					return stream
 				},
 			},

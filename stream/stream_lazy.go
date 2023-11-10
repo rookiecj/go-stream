@@ -269,6 +269,18 @@ func (s *Stream[any]) ForEachIndex(f func(int, any)) {
 	}
 }
 
+func (s *Stream[any]) Collect() (target []any) {
+	if s == nil {
+		return
+	}
+
+	for s.next() {
+		v := s.get()
+		target = append(target, v)
+	}
+	return
+}
+
 // Reduce performs a reduction on the elements of this stream, using the provided identity value and an associative accumulation function, and returns the reduced value.
 func (s *Stream[any]) Reduce(f func(any, any) any) any {
 	var result any
@@ -296,17 +308,4 @@ func (s *Stream[any]) FindOr(f func(any) bool, defvalue any) any {
 		}
 	}
 	return defvalue
-}
-
-// CollectAs returns a slice containing the elements of this stream.
-func CollectAs[T any](s *Stream[any], target []T) []T {
-	if s == nil {
-		return nil
-	}
-
-	for s.next() {
-		v := s.get()
-		target = append(target, v.(T))
-	}
-	return target
 }

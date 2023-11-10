@@ -1,8 +1,8 @@
 # go-stream
 
-`go-stream` is a `Go` package to easily handle the stream of slice elements.
+`go-stream` is a `Go` package to help the stream of slice elements in more functional manner.
 
-`Stream` uses iterator pattern for visit each elements of a stream.
+`Stream` uses iterator pattern for visiting each element of a stream.
 It is lazy, which means the operations are not executed until terminal operation is called.
 and it is not thread safe.
 
@@ -65,7 +65,7 @@ There 3 main operations:
 
 - Builders
 - Intermediates
-- Termimals
+- Terminals
 
 ### Builders
 
@@ -87,15 +87,22 @@ Intermediate operations generate new stream which consume data from upstream and
 - [X] Distinct, DistinctBy
 - [ ] Zip with Pair 
 - [X] ZipWith
+- [ ] Window
 
 ### Terminal operations
 
 Terminal operations are collectors which trigger streams to work. and return the result of the stream.
 
 - [X] ForEach, ForEachIndex
-- [X] CollectAs
+- [X] Collect
 - [X] Reduce
 - [ ] Fold
+
+Slightly more type safe operators are:
+- [ ] ForEachAs, ForEachAsIndex
+- [X] CollectAs
+- [ ] ReduceAs
+- [ ] FoldAs
 
 ## TODO
 

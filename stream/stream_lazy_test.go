@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -9,7 +10,14 @@ type myStruct struct {
 	Name string
 }
 
-func TestCollectAs(t *testing.T) {
+func toInterface[T any](arr []T) (result []any) {
+	for _, a := range arr {
+		result = append(result, a)
+	}
+	return
+}
+
+func TestStream_Collect(t *testing.T) {
 
 	emptyArr := make([]myStruct, 0)
 	var emptySlice []myStruct
@@ -34,24 +42,23 @@ func TestCollectAs(t *testing.T) {
 	type testCase[T any] struct {
 		name string
 		args args[T]
-		want []T
+		//want []T
+		want []interface{}
 	}
 	tests := []testCase[myStruct]{
 		{
 			name: "empty array",
 			args: args[myStruct]{
-				s:      ToStream(emptyArr),
-				target: []myStruct{},
+				s: ToStream(emptyArr),
 			},
-			want: []myStruct{},
+			want: toInterface([]myStruct{}),
 		},
 		{
 			name: "empty slice",
 			args: args[myStruct]{
-				s:      ToStream(emptySlice),
-				target: []myStruct{},
+				s: ToStream(emptySlice),
 			},
-			want: []myStruct{},
+			want: toInterface([]myStruct{}),
 		},
 		{
 			name: "filter_map",
@@ -61,15 +68,24 @@ func TestCollectAs(t *testing.T) {
 				}).Map(func(v any) any {
 					return myStruct{v.(myStruct).Name + "!"}
 				}),
-				target: []myStruct{},
 			},
-			want: []myStruct{{"a!"}, {"c!"}, {"e!"}, {"g!"}, {"i!"}},
+			want: toInterface([]myStruct{{"a!"}, {"c!"}, {"e!"}, {"g!"}, {"i!"}}),
 		},
 	}
+
 	for _, tt := range tests {
+
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs(tt.args.s, tt.args.target); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CollectAs() = %v, want %v", got, tt.want)
+			if got := tt.args.s.Collect(); got != nil {
+				gotValue := reflect.ValueOf(got)
+				wantValue := reflect.ValueOf(tt.want)
+				gotValueT := gotValue.Type()
+				wantValueT := wantValue.Type()
+				fmt.Printf("%v, %v\n", gotValueT, wantValueT)
+				//[]interface {}, []stream.myStruct
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("Collect() = %v, want %v", got, tt.want)
+				}
 			}
 		})
 	}

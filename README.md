@@ -71,9 +71,9 @@ There 3 main operations:
 
 Builder operations build a `Stream` from various sources like slice and array.
 
-- [X] ToStream
-- [ ] FromSlice 
-- [ ] FromChan
+- [X] FromSlice 
+- [X] FromVar
+- [X] FromChan
 
 ### Intermediate operations
 

@@ -33,7 +33,7 @@ func TestCollectAs(t *testing.T) {
 	}
 	tests := []testCase[myStruct]{
 		{
-			name: "empty array",
+			name: "array/empty",
 			args: args[myStruct]{
 				s:      FromSlice(emptyArr),
 				target: []myStruct{},
@@ -41,7 +41,7 @@ func TestCollectAs(t *testing.T) {
 			want: []myStruct{},
 		},
 		{
-			name: "empty slice",
+			name: "slice/empty",
 			args: args[myStruct]{
 				s:      FromSlice(emptySlice),
 				target: []myStruct{},

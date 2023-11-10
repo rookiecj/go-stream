@@ -1,6 +1,6 @@
 # go-stream
 
-`go-stream` is a `Go` package to help the stream of slice elements in more functional manner.
+`go-stream` is a `Go` package to help the stream processing of elements in more functional manner.
 
 `Stream` uses iterator pattern for visiting each element of a stream.
 It is lazy, which means the operations are not executed until terminal operation is called.
@@ -73,7 +73,7 @@ Builder operations build a `Stream` from various sources like slice and array.
 
 - [X] FromSlice 
 - [X] FromVar
-- [X] FromChan
+- [X] FromChan (Experimental)
 
 ### Intermediate operations
 
@@ -85,9 +85,9 @@ Intermediate operations generate new stream which consume data from upstream and
 - [ ] FlatMapConcurrent
 - [X] Take, Skip
 - [X] Distinct, DistinctBy
-- [ ] Zip with Pair 
+- [ ] Zip(with Pair)
 - [X] ZipWith
-- [ ] ZipWithPrev
+- [ ] ZipWithPrev (Experimental)
 - [X] Scan
 - [ ] Window
 
@@ -111,7 +111,7 @@ Slightly more type safe functions are:
 ## TODO
 
 - [X] make ToStream lazy
-- [ ] add more Builders 
+- [X] add more Builders 
 - [ ] Stream to interface
 - [ ] add more intermediate operations
 - [ ] add more terminal operations

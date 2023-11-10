@@ -346,6 +346,21 @@ func (s *Stream[any]) Reduce(reducer func(any, any) any) any {
 	return result
 }
 
+// Fold performs a reduction on the elements of this stream, using the provided identity value
+// and an associative accumulation function, and returns the reduced value.
+func (s *Stream[any]) Fold(init any, reducer func(acc any, ele any) any) (result any) {
+	if s == nil {
+		return init
+	}
+
+	result = init
+	for s.next() {
+		v := s.get()
+		result = reducer(result, v)
+	}
+	return result
+}
+
 // Find returns the first element of this stream matching the given predicate
 func (s *Stream[any]) Find(predicate func(any) bool) (found any) {
 	return s.FindOr(predicate, found)

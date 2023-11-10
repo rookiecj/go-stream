@@ -626,3 +626,120 @@ func TestStream_FindLastIndex(t *testing.T) {
 		})
 	}
 }
+
+func TestStream_Fold(t *testing.T) {
+	var emptySlice []myStruct
+
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+	}
+
+	type args[T any] struct {
+		init    T
+		reducer func(acc any, ele any) any
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args[T]
+		want T
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "fold empty",
+			s:    FromSlice(emptySlice),
+			args: args[myStruct]{
+				init: myStruct{"!"},
+				reducer: func(acc any, ele any) any {
+					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				},
+			},
+			want: myStruct{"!"},
+		},
+		{
+			name: "fold",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				init: myStruct{"!"},
+				reducer: func(acc any, ele any) any {
+					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				},
+			},
+			want: myStruct{"!abcd"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotResult := tt.s.Fold(tt.args.init, tt.args.reducer); !reflect.DeepEqual(gotResult, tt.want) {
+				t.Errorf("Fold() = %v, want %v", gotResult, tt.want)
+			}
+		})
+	}
+}
+
+func TestStream_Fold_Reduce_As_Array(t *testing.T) {
+	var emptySlice []myStruct
+
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+	}
+
+	type args[T any] struct {
+		init    []T
+		reducer func(acc any, ele any) any
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args[T]
+		want []T
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "fold empty list",
+			s:    FromSlice(emptySlice),
+			args: args[myStruct]{
+				init: []myStruct{},
+				reducer: func(acc any, ele any) any {
+					return append(acc.([]myStruct), ele.(myStruct))
+				},
+			},
+			want: []myStruct{},
+		},
+		{
+			name: "fold empty list with init value",
+			s:    FromSlice(emptySlice),
+			args: args[myStruct]{
+				init: []myStruct{{"!"}},
+				reducer: func(acc any, ele any) any {
+					return append(acc.([]myStruct), ele.(myStruct))
+				},
+			},
+			want: []myStruct{{"!"}},
+		},
+		{
+			name: "fold",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				init: []myStruct{},
+				reducer: func(acc any, ele any) any {
+					return append(acc.([]myStruct), ele.(myStruct))
+				},
+			},
+			want: []myStruct{{"a"}, {"b"}, {"c"}, {"d"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotResult := tt.s.Fold(tt.args.init, tt.args.reducer); !reflect.DeepEqual(gotResult, tt.want) {
+				t.Errorf("Fold() = %v, want %v", gotResult, tt.want)
+			}
+		})
+	}
+}

@@ -241,3 +241,119 @@ func TestStream_ZipWith(t *testing.T) {
 		})
 	}
 }
+
+func TestStream_Intermediates_NilReceiver(t *testing.T) {
+
+	type args struct {
+		f func(s *Stream[any]) *Stream[any]
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args
+		want reflect.Type
+	}
+
+	var s *Stream[any]
+	typeOfNilStream := reflect.TypeOf(s)
+
+	tests := []testCase[myStruct]{
+		{
+			name: "filter",
+			s:    s,
+			args: args{
+				f: func(s *Stream[any]) *Stream[any] {
+					return s.Filter(nil)
+				},
+			},
+			want: typeOfNilStream,
+		},
+		{
+			name: "map",
+			s:    s,
+			args: args{
+				f: func(s *Stream[any]) *Stream[any] {
+					return s.Map(nil)
+				},
+			},
+			want: typeOfNilStream,
+		},
+		{
+			name: "mapIndex",
+			s:    s,
+			args: args{
+				f: func(s *Stream[any]) *Stream[any] {
+					return s.MapIndex(nil)
+				},
+			},
+			want: typeOfNilStream,
+		},
+		{
+			name: "flatmapconcat",
+			s:    s,
+			args: args{
+				f: func(s *Stream[any]) *Stream[any] {
+					return s.FlatMapConcat(nil)
+				},
+			},
+			want: typeOfNilStream,
+		},
+		{
+			name: "Take",
+			s:    s,
+			args: args{
+				f: func(s *Stream[any]) *Stream[any] {
+					return s.Take(0)
+				},
+			},
+			want: typeOfNilStream,
+		},
+		{
+			name: "Skip",
+			s:    s,
+			args: args{
+				f: func(s *Stream[any]) *Stream[any] {
+					return s.Skip(0)
+				},
+			},
+			want: typeOfNilStream,
+		},
+		{
+			name: "Distinct",
+			s:    s,
+			args: args{
+				f: func(s *Stream[any]) *Stream[any] {
+					return s.Distinct()
+				},
+			},
+			want: typeOfNilStream,
+		},
+		{
+			name: "DistinctBy",
+			s:    s,
+			args: args{
+				f: func(s *Stream[any]) *Stream[any] {
+					return s.DistinctBy(nil)
+				},
+			},
+			want: typeOfNilStream,
+		},
+		{
+			name: "ZipWith",
+			s:    s,
+			args: args{
+				f: func(s *Stream[any]) *Stream[any] {
+					return s.ZipWith(nil, nil)
+				},
+			},
+			want: typeOfNilStream,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.args.f(tt.s); reflect.TypeOf(got) != tt.want {
+				t.Errorf("got = %v, want %v", reflect.TypeOf(got), tt.want)
+			}
+		})
+	}
+}

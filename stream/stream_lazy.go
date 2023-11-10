@@ -35,8 +35,11 @@ func ToStream[T any](arr []T) *Stream[any] {
 
 // Filter returns a stream consisting of the elements of this stream that match the given predicate.
 func (s *Stream[any]) Filter(f func(any) bool) *Stream[any] {
-	var stream Stream[any]
+	if s == nil {
+		return s
+	}
 
+	var stream Stream[any]
 	stream.next = func() bool {
 		for s.next() {
 			if f(s.get()) {
@@ -55,6 +58,10 @@ func (s *Stream[any]) Filter(f func(any) bool) *Stream[any] {
 
 // Map returns a stream consisting of the results of applying the given function to the elements of this stream.
 func (s *Stream[any]) Map(f func(any) any) *Stream[any] {
+	if s == nil {
+		return s
+	}
+
 	var stream Stream[any]
 	stream.next = func() bool {
 		return s.next()
@@ -67,7 +74,12 @@ func (s *Stream[any]) Map(f func(any) any) *Stream[any] {
 
 // MapIndex returns a stream consisting of the results of applying the given function to the elements of this stream.
 func (s *Stream[any]) MapIndex(f func(int, any) any) *Stream[any] {
+	if s == nil {
+		return s
+	}
+
 	var stream Stream[any]
+
 	stream.idx = 0
 	stream.next = func() bool {
 		return s.next()
@@ -84,6 +96,10 @@ func (s *Stream[any]) MapIndex(f func(int, any) any) *Stream[any] {
 // replacing each element of this stream with the contents of
 // a mapped stream produced by applying the provided mapping function to each element.
 func (s *Stream[any]) FlatMapConcat(f func(any) *Stream[any]) *Stream[any] {
+	if s == nil {
+		return s
+	}
+
 	var stream Stream[any]
 	var astream *Stream[any]
 	stream.next = func() bool {
@@ -113,6 +129,10 @@ func (s *Stream[any]) FlatMapConcat(f func(any) *Stream[any]) *Stream[any] {
 
 // Take returns a stream consisting of the first n elements of this stream.
 func (s *Stream[any]) Take(n int) *Stream[any] {
+	if s == nil {
+		return s
+	}
+
 	var stream Stream[any]
 	stream.idx = 0
 	stream.next = func() bool {
@@ -130,6 +150,10 @@ func (s *Stream[any]) Take(n int) *Stream[any] {
 
 // Skip returns a stream consisting of the remaining elements of this stream after discarding the first n elements of the stream.
 func (s *Stream[any]) Skip(n int) *Stream[any] {
+	if s == nil {
+		return s
+	}
+
 	var stream Stream[any]
 	stream.idx = 0
 	stream.next = func() bool {
@@ -150,6 +174,10 @@ func (s *Stream[any]) Skip(n int) *Stream[any] {
 // Distinct returns a stream consisting of the subsequent distinct elements of this stream.
 // [a, a, b, c, a] => [a, b, c, a]
 func (s *Stream[any]) Distinct() *Stream[any] {
+	if s == nil {
+		return s
+	}
+
 	return s.DistinctBy(func(old, v any) bool {
 		return reflect.DeepEqual(old, v)
 	})
@@ -159,6 +187,10 @@ func (s *Stream[any]) Distinct() *Stream[any] {
 // [a, a, b, c, a] => [a, b, c, a]
 // cmd is a function to compare two elements, return true if they are equal
 func (s *Stream[any]) DistinctBy(cmp func(any, any) bool) *Stream[any] {
+	if s == nil {
+		return s
+	}
+
 	var stream Stream[any]
 	var old any
 	var first bool = true
@@ -195,6 +227,10 @@ func (s *Stream[any]) DistinctBy(cmp func(any, any) bool) *Stream[any] {
 
 // ZipWith returns a stream consisting of appling the given function to the elements of this stream and another stream.
 func (s *Stream[any]) ZipWith(other *Stream[any], f func(any, any) any) *Stream[any] {
+	if s == nil {
+		return s
+	}
+
 	var stream Stream[any]
 	stream.next = func() bool {
 		return s.next() && other.next()
@@ -211,6 +247,10 @@ func (s *Stream[any]) ZipWith(other *Stream[any], f func(any, any) any) *Stream[
 
 // ForEach performs an action for each element of this stream.
 func (s *Stream[any]) ForEach(f func(any)) {
+	if s == nil {
+		return
+	}
+
 	for s.next() {
 		f(s.get())
 	}
@@ -218,6 +258,10 @@ func (s *Stream[any]) ForEach(f func(any)) {
 
 // ForEachIndex performs an action for each element of this stream.
 func (s *Stream[any]) ForEachIndex(f func(int, any)) {
+	if s == nil {
+		return
+	}
+
 	idx := 0
 	for s.next() {
 		f(idx, s.get())
@@ -228,6 +272,10 @@ func (s *Stream[any]) ForEachIndex(f func(int, any)) {
 // Reduce performs a reduction on the elements of this stream, using the provided identity value and an associative accumulation function, and returns the reduced value.
 func (s *Stream[any]) Reduce(f func(any, any) any) any {
 	var result any
+	if s == nil {
+		return result
+	}
+
 	for s.next() {
 		v := s.get()
 		result = f(result, v)
@@ -237,6 +285,10 @@ func (s *Stream[any]) Reduce(f func(any, any) any) any {
 
 // FindOr returns the first element of this stream matching the given predicate, or defvalue if no such element exists.
 func (s *Stream[any]) FindOr(f func(any) bool, defvalue any) any {
+	if s == nil {
+		return defvalue
+	}
+
 	for s.next() {
 		v := s.get()
 		if f(v) {
@@ -248,6 +300,10 @@ func (s *Stream[any]) FindOr(f func(any) bool, defvalue any) any {
 
 // CollectAs returns a slice containing the elements of this stream.
 func CollectAs[T any](s *Stream[any], target []T) []T {
+	if s == nil {
+		return nil
+	}
+
 	for s.next() {
 		v := s.get()
 		target = append(target, v.(T))

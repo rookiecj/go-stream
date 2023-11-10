@@ -41,7 +41,7 @@ func main() {
 		{"i"},
 	}
 
-	stream := s.ToStream(arr)
+	stream := s.FromSlice(arr)
 	imm1 := stream.Filter(func(v any) bool {
 		return len(v.(myStruct).Name) == 1
 	}).Map(func(v any) any {
@@ -52,7 +52,7 @@ func main() {
 	fmt.Println(myStructs)
 
 	arrempty := []myStruct{}
-	imm2 := s.ToStream(arrempty)
+	imm2 := s.FromSlice(arrempty)
 	myStructs2 := s.CollectAs(imm2, []myStruct{})
 	fmt.Println(myStructs2)
 }
@@ -98,7 +98,7 @@ Terminal operations are collectors which trigger streams to work. and return the
 - [X] Reduce
 - [ ] Fold
 
-Slightly more type safe operators are:
+Slightly more type safe functions are:
 - [ ] ForEachAs, ForEachAsIndex
 - [X] CollectAs
 - [ ] ReduceAs

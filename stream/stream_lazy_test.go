@@ -49,21 +49,21 @@ func TestStream_Collect(t *testing.T) {
 		{
 			name: "empty array",
 			args: args[myStruct]{
-				s: ToStream(emptyArr),
+				s: FromSlice(emptyArr),
 			},
 			want: toInterface([]myStruct{}),
 		},
 		{
 			name: "empty slice",
 			args: args[myStruct]{
-				s: ToStream(emptySlice),
+				s: FromSlice(emptySlice),
 			},
 			want: toInterface([]myStruct{}),
 		},
 		{
 			name: "filter_map",
 			args: args[myStruct]{
-				s: ToStream(arr).Filter(func(v any) bool {
+				s: FromSlice(arr).Filter(func(v any) bool {
 					return len(v.(myStruct).Name) == 1
 				}).Map(func(v any) any {
 					return myStruct{v.(myStruct).Name + "!"}
@@ -112,11 +112,11 @@ func TestStream_FlatMapConCat(t *testing.T) {
 	tests := []testCase[myStruct]{
 		{
 			name: "flatmap_concat",
-			s:    ToStream(arr),
+			s:    FromSlice(arr),
 			args: args{
 				f: func(v any) *Stream[any] {
 					ms := v.(myStruct)
-					stream := ToStream[myStruct]([]myStruct{ms, ms})
+					stream := FromSlice[myStruct]([]myStruct{ms, ms})
 					return stream
 				},
 			},
@@ -152,7 +152,7 @@ func TestStream_Distinct(t *testing.T) {
 	tests := []testCase[myStruct]{
 		{
 			name: "distinct",
-			s:    ToStream(arr),
+			s:    FromSlice(arr),
 			want: []myStruct{{"a"}, {"b"}, {"c"}, {"a"}, {"b"}},
 		},
 	}
@@ -188,7 +188,7 @@ func TestStream_DistinctBy(t *testing.T) {
 	tests := []testCase[myStruct]{
 		{
 			name: "distinctBy with deepequal",
-			s:    ToStream(arr),
+			s:    FromSlice(arr),
 			args: args{
 				cmp: func(old, v any) bool {
 					return reflect.DeepEqual(old, v)
@@ -235,9 +235,9 @@ func TestStream_ZipWith(t *testing.T) {
 	tests := []testCase[myStruct]{
 		{
 			name: "zipwith",
-			s:    ToStream(arr1),
+			s:    FromSlice(arr1),
 			args: args{
-				other: ToStream(arr2),
+				other: FromSlice(arr2),
 				f: func(ele1 any, ele2 any) any {
 					result := myStruct{
 						Name: ele1.(myStruct).Name + ele2.(myStruct).Name,

@@ -11,24 +11,6 @@ type Stream[T any] struct {
 	get  func() T
 }
 
-// ToStream converts slice to Stream
-func ToStream[T any](arr []T) *Stream[any] {
-	stream := new(Stream[any])
-	stream.idx = -1
-	stream.next = func() bool {
-		if stream.idx+1 == len(arr) {
-			return false
-		}
-		stream.idx++
-		return true
-	}
-
-	stream.get = func() any {
-		return arr[stream.idx]
-	}
-	return stream
-}
-
 //
 // intermediate operations
 //

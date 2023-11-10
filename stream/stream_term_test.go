@@ -35,7 +35,7 @@ func TestCollectAs(t *testing.T) {
 		{
 			name: "empty array",
 			args: args[myStruct]{
-				s:      ToStream(emptyArr),
+				s:      FromSlice(emptyArr),
 				target: []myStruct{},
 			},
 			want: []myStruct{},
@@ -43,7 +43,7 @@ func TestCollectAs(t *testing.T) {
 		{
 			name: "empty slice",
 			args: args[myStruct]{
-				s:      ToStream(emptySlice),
+				s:      FromSlice(emptySlice),
 				target: []myStruct{},
 			},
 			want: []myStruct{},
@@ -51,7 +51,7 @@ func TestCollectAs(t *testing.T) {
 		{
 			name: "filter_map",
 			args: args[myStruct]{
-				s: ToStream(arr).Filter(func(v any) bool {
+				s: FromSlice(arr).Filter(func(v any) bool {
 					return len(v.(myStruct).Name) == 1
 				}).Map(func(v any) any {
 					return myStruct{v.(myStruct).Name + "!"}
@@ -101,7 +101,7 @@ func TestForEachAs(t *testing.T) {
 		{
 			name: "empty array",
 			args: args[myStruct]{
-				s: ToStream(emptyArr),
+				s: FromSlice(emptyArr),
 				f: func(v myStruct) {
 					collected = append(collected, v)
 				},
@@ -111,7 +111,7 @@ func TestForEachAs(t *testing.T) {
 		{
 			name: "empty slice",
 			args: args[myStruct]{
-				s: ToStream(emptySlice),
+				s: FromSlice(emptySlice),
 				f: func(v myStruct) {
 					collected = append(collected, v)
 				},
@@ -121,7 +121,7 @@ func TestForEachAs(t *testing.T) {
 		{
 			name: "filter_map",
 			args: args[myStruct]{
-				s: ToStream(arr).Filter(func(v any) bool {
+				s: FromSlice(arr).Filter(func(v any) bool {
 					return len(v.(myStruct).Name) == 1
 				}).Map(func(v any) any {
 					return myStruct{v.(myStruct).Name + "!"}

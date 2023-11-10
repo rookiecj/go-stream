@@ -415,3 +415,62 @@ func TestStream_Scan(t *testing.T) {
 		})
 	}
 }
+
+func TestStream_FindIndex(t *testing.T) {
+
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+	}
+
+	type args struct {
+		predicate func(any) bool
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args
+		want int
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "find/0",
+			s:    FromSlice(arr1),
+			args: args{
+				predicate: func(ele any) bool {
+					return ele.(myStruct) == myStruct{"a"}
+				},
+			},
+			want: 0,
+		},
+		{
+			name: "find/3",
+			s:    FromSlice(arr1),
+			args: args{
+				predicate: func(ele any) bool {
+					return ele.(myStruct) == myStruct{"d"}
+				},
+			},
+			want: 3,
+		},
+		{
+			name: "find/-1(not found)",
+			s:    FromSlice(arr1),
+			args: args{
+				predicate: func(ele any) bool {
+					return false
+				},
+			},
+			want: -1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.FindIndex(tt.args.predicate); got != tt.want {
+				t.Errorf("FindIndex() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

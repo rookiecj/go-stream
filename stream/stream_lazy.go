@@ -16,7 +16,7 @@ type Stream[T any] struct {
 //
 
 // Filter returns a stream consisting of the elements of this stream that match the given predicate.
-func (s *Stream[any]) Filter(f func(any) bool) *Stream[any] {
+func (s *Stream[any]) Filter(filter func(any) bool) *Stream[any] {
 	if s == nil {
 		return s
 	}
@@ -24,7 +24,7 @@ func (s *Stream[any]) Filter(f func(any) bool) *Stream[any] {
 	var stream Stream[any]
 	stream.next = func() bool {
 		for s.next() {
-			if f(s.get()) {
+			if filter(s.get()) {
 				return true
 			}
 		}
@@ -39,7 +39,7 @@ func (s *Stream[any]) Filter(f func(any) bool) *Stream[any] {
 }
 
 // Map returns a stream consisting of the results of applying the given function to the elements of this stream.
-func (s *Stream[any]) Map(f func(any) any) *Stream[any] {
+func (s *Stream[any]) Map(mapf func(any) any) *Stream[any] {
 	if s == nil {
 		return s
 	}
@@ -49,13 +49,13 @@ func (s *Stream[any]) Map(f func(any) any) *Stream[any] {
 		return s.next()
 	}
 	stream.get = func() any {
-		return f(s.get())
+		return mapf(s.get())
 	}
 	return &stream
 }
 
 // MapIndex returns a stream consisting of the results of applying the given function to the elements of this stream.
-func (s *Stream[any]) MapIndex(f func(int, any) any) *Stream[any] {
+func (s *Stream[any]) MapIndex(mapf func(int, any) any) *Stream[any] {
 	if s == nil {
 		return s
 	}
@@ -69,7 +69,7 @@ func (s *Stream[any]) MapIndex(f func(int, any) any) *Stream[any] {
 	stream.get = func() any {
 		idx := stream.idx
 		stream.idx++
-		return f(idx, s.get())
+		return mapf(idx, s.get())
 	}
 	return &stream
 }
@@ -302,7 +302,7 @@ func (s *Stream[any]) Collect() (target []any) {
 }
 
 // Reduce performs a reduction on the elements of this stream, using the provided identity value and an associative accumulation function, and returns the reduced value.
-func (s *Stream[any]) Reduce(f func(any, any) any) any {
+func (s *Stream[any]) Reduce(reducer func(any, any) any) any {
 	var result any
 	if s == nil {
 		return result
@@ -310,7 +310,7 @@ func (s *Stream[any]) Reduce(f func(any, any) any) any {
 
 	for s.next() {
 		v := s.get()
-		result = f(result, v)
+		result = reducer(result, v)
 	}
 	return result
 }
@@ -328,4 +328,22 @@ func (s *Stream[any]) FindOr(f func(any) bool, defvalue any) any {
 		}
 	}
 	return defvalue
+}
+
+// FindIndex returns the index of the first element of this stream matching the given predicate,
+// or -1 if no such element exists.
+func (s *Stream[any]) FindIndex(predicate func(any) bool) int {
+	if s == nil {
+		return -1
+	}
+
+	idx := -1
+	for s.next() {
+		v := s.get()
+		idx++
+		if predicate(v) {
+			return idx
+		}
+	}
+	return -1
 }

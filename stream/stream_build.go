@@ -45,24 +45,23 @@ func FromVar[T any](arr ...T) *Stream[any] {
 
 // FromChan build a Stream from given channel
 func FromChan[T any](ch <-chan T) (stream *Stream[any]) {
-	stream = new(Stream[any])
-	var v any
-	var ok = true
 	if ch == nil {
-		stream.next = func() bool {
-			return false
-		}
-	} else {
-		stream.next = func() bool {
-			//if !ok {
-			//	done <- true
-			//	return false
-			//}
-			v, ok = <-ch
-			return ok
-		}
+		var nilStream *Stream[any]
+		return nilStream
 	}
 
+	stream = new(Stream[any])
+	stream.idx = -1
+
+	var v T
+	var ok = true
+	stream.next = func() bool {
+		v, ok = <-ch
+		if ok {
+			stream.idx++
+		}
+		return ok
+	}
 	stream.get = func() any {
 		return v
 	}

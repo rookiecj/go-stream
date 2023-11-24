@@ -839,3 +839,181 @@ func TestStream_Reduce_empty(t *testing.T) {
 		})
 	}
 }
+
+func TestStream_Take(t *testing.T) {
+	type args struct {
+		n int
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args
+		want []int
+	}
+	tests := []testCase[int]{
+		{
+			name: "take 0",
+			s:    FromSlice([]int{0, 1, 2, 3, 4, 5}),
+			args: args{
+				0,
+			},
+			want: []int{},
+		},
+		{
+			name: "take 1",
+			s:    FromSlice([]int{0, 1, 2, 3, 4, 5}),
+			args: args{
+				1,
+			},
+			want: []int{0},
+		},
+		{
+			name: "take 5",
+			s:    FromSlice([]int{0, 1, 2, 3, 4, 5}),
+			args: args{
+				5,
+			},
+			want: []int{0, 1, 2, 3, 4},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			target := []int{}
+			if got := CollectAs(tt.s.Take(tt.args.n), target); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Take() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStream_Skip(t *testing.T) {
+	type args struct {
+		n int
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args
+		want []int
+	}
+	tests := []testCase[int]{
+		{
+			name: "skip 0",
+			s:    FromSlice([]int{0, 1, 2, 3, 4, 5}),
+			args: args{
+				0,
+			},
+			want: []int{0, 1, 2, 3, 4, 5},
+		},
+		{
+			name: "skip 1",
+			s:    FromSlice([]int{0, 1, 2, 3, 4, 5}),
+			args: args{
+				1,
+			},
+			want: []int{1, 2, 3, 4, 5},
+		},
+		{
+			name: "skip 5",
+			s:    FromSlice([]int{0, 1, 2, 3, 4, 5}),
+			args: args{
+				5,
+			},
+			want: []int{5},
+		},
+		{
+			name: "skip all",
+			s:    FromSlice([]int{0, 1, 2, 3, 4, 5}),
+			args: args{
+				6,
+			},
+			want: []int{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			target := []int{}
+			if got := CollectAs(tt.s.Skip(tt.args.n), target); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Skip() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStream_MapIndex(t *testing.T) {
+	type args[T any] struct {
+		index int
+		mapf  func(int, any) any
+	}
+	type pair struct {
+		index int
+		v     any
+	}
+	type testCase[T any] struct {
+		name  string
+		s     *Stream[any]
+		args  args[T]
+		index []int
+		want  []pair
+	}
+	tests := []testCase[int]{
+		{
+			name: "map index empty",
+			s:    FromSlice([]int{}),
+			args: args[int]{
+				index: 0,
+				mapf: func(index int, entry any) any {
+					return pair{
+						index: index,
+						v:     entry,
+					}
+				},
+			},
+			want: []pair{},
+		},
+		{
+			name: "map index 0",
+			s:    FromSlice([]int{0}),
+			args: args[int]{
+				index: 0,
+				mapf: func(index int, entry any) any {
+					return pair{
+						index: index,
+						v:     entry,
+					}
+				},
+			},
+			want: []pair{{0, 0}},
+		},
+
+		{
+			name: "map index n",
+			s:    FromSlice([]int{0, 1, 2, 3, 4, 5}),
+			args: args[int]{
+				index: 0,
+				mapf: func(index int, entry any) any {
+					return pair{
+						index: index,
+						v:     entry,
+					}
+				},
+			},
+			want: []pair{
+				{0, 0},
+				{1, 1},
+				{2, 2},
+				{3, 3},
+				{4, 4},
+				{5, 5},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			target := []pair{}
+			if got := CollectAs(tt.s.MapIndex(tt.args.mapf), target); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("MapIndex() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

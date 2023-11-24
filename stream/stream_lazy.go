@@ -62,14 +62,16 @@ func (s *Stream[any]) MapIndex(mapf func(int, any) any) *Stream[any] {
 
 	var stream Stream[any]
 
-	stream.idx = 0
+	stream.idx = -1
 	stream.next = func() bool {
-		return s.next()
+		if s.next() {
+			stream.idx++
+			return true
+		}
+		return false
 	}
 	stream.get = func() any {
-		idx := stream.idx
-		stream.idx++
-		return mapf(idx, s.get())
+		return mapf(stream.idx, s.get())
 	}
 	return &stream
 }
@@ -116,9 +118,9 @@ func (s *Stream[any]) Take(n int) *Stream[any] {
 	}
 
 	var stream Stream[any]
-	stream.idx = 0
+	stream.idx = -1
 	stream.next = func() bool {
-		if stream.idx == n {
+		if stream.idx+1 == n {
 			return false
 		}
 		stream.idx++
@@ -137,9 +139,9 @@ func (s *Stream[any]) Skip(n int) *Stream[any] {
 	}
 
 	var stream Stream[any]
-	stream.idx = 0
+	stream.idx = -1
 	stream.next = func() bool {
-		for stream.idx < n {
+		for stream.idx+1 < n {
 			if !s.next() {
 				return false
 			}

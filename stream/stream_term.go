@@ -3,7 +3,7 @@ package stream
 // CollectAs returns a slice containing the elements of this stream with slightly more type safety
 func CollectAs[T any](s *Stream[any], target []T) []T {
 	if s == nil {
-		return nil
+		return []T{}
 	}
 
 	for s.next() {

@@ -1,6 +1,6 @@
 # go-stream
 
-`go-stream` is a `Go` package to help the stream processing of elements in more functional manner.
+`go-stream` is a `Go` package to help processing stream of elements in more functional manner.
 
 `Stream` uses iterator pattern for visiting each element of a stream.
 It is lazy, which means the operations are not executed until terminal operation is called.

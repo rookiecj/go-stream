@@ -11,6 +11,11 @@ type myStruct struct {
 	Name string
 }
 
+type myStructWithId struct {
+	id   int
+	Name string
+}
+
 func toInterface[T any](arr []T) (result []any) {
 	for _, a := range arr {
 		result = append(result, a)
@@ -219,12 +224,12 @@ func TestStream_FlatMapConCat(t *testing.T) {
 func TestStream_Distinct(t *testing.T) {
 
 	arr := []myStruct{
-		{"a"},
-		{"a"},
-		{"b"},
-		{"c"},
-		{"a"},
-		{"b"},
+		{Name: "a"},
+		{Name: "a"},
+		{Name: "b"},
+		{Name: "c"},
+		{Name: "a"},
+		{Name: "b"},
 	}
 
 	type testCase[T any] struct {
@@ -283,6 +288,52 @@ func TestStream_DistinctBy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var target []myStruct
+			if got := CollectAs(tt.s.DistinctBy(tt.args.cmp), target); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("DistinctBy() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStream_DistinctBy2(t *testing.T) {
+	arr := []myStructWithId{
+		{id: 0, Name: "a"},
+		{id: 0, Name: "a"},
+		{id: 2, Name: "b"},
+		{id: 3, Name: "c"},
+		{id: 0, Name: "a"},
+		{id: 2, Name: "b"},
+	}
+
+	type args struct {
+		cmp func(any, any) bool
+	}
+	type testCase[T any] struct {
+		name string
+		s    *Stream[any]
+		args args
+		want []T
+	}
+	tests := []testCase[myStructWithId]{
+		{
+			name: "distinctBy with id",
+			s:    FromSlice(arr),
+			args: args{
+				cmp: func(old, v any) bool {
+					if old == nil {
+						return false
+					}
+					oldId := old.(myStructWithId).id
+					vId := v.(myStructWithId).id
+					return oldId == vId
+				},
+			},
+			want: []myStructWithId{{id: 0, Name: "a"}, {id: 2, Name: "b"}, {id: 3, Name: "c"}, {id: 0, Name: "a"}, {id: 2, Name: "b"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var target []myStructWithId
 			if got := CollectAs(tt.s.DistinctBy(tt.args.cmp), target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DistinctBy() = %v, want %v", got, tt.want)
 			}

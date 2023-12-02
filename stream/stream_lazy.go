@@ -168,22 +168,23 @@ func (s *Stream[any]) Distinct() *Stream[any] {
 }
 
 // DistinctBy returns a stream consisting of the subsequent distinct elements of this stream.
-// [a, a, b, c, a] => [a, b, c, a]
-// cmd is a function to compare two elements, return true if they are equal
-func (s *Stream[any]) DistinctBy(cmp func(any, any) bool) *Stream[any] {
+// [a(0), a(1), b, c, a] => [a(0), b, c, a]
+// cmd is a function to compare two elements, return true if they are equal.
+// With the first element, nil is given to old.
+func (s *Stream[any]) DistinctBy(cmp func(old any, new any) bool) *Stream[any] {
 	if s == nil {
 		return s
 	}
 
 	var stream Stream[any]
 	var old any
-	var first bool = true
+	stream.idx = -1
 	stream.next = func() bool {
 		for s.next() {
+			stream.idx++
 			v := s.get()
-			if first || !cmp(old, v) {
+			if !cmp(old, v) {
 				old = v
-				first = false
 				return true
 			}
 			old = v
@@ -191,7 +192,7 @@ func (s *Stream[any]) DistinctBy(cmp func(any, any) bool) *Stream[any] {
 		return false
 	}
 	stream.get = func() any {
-		return s.get()
+		return old
 	}
 	return &stream
 }
@@ -306,10 +307,10 @@ func (s *Stream[any]) ForEachIndex(f func(int, any)) {
 		return
 	}
 
-	idx := 0
+	idx := -1
 	for s.next() {
-		f(idx, s.get())
 		idx++
+		f(idx, s.get())
 	}
 }
 
@@ -391,8 +392,8 @@ func (s *Stream[any]) FindIndex(predicate func(any) bool) int {
 
 	idx := -1
 	for s.next() {
-		v := s.get()
 		idx++
+		v := s.get()
 		if predicate(v) {
 			return idx
 		}
@@ -441,8 +442,8 @@ func (s *Stream[any]) FindLastIndex(predicate func(any) bool) (found int) {
 	idx := -1
 	found = idx
 	for s.next() {
-		v := s.get()
 		idx++
+		v := s.get()
 		if predicate(v) {
 			found = idx
 		}

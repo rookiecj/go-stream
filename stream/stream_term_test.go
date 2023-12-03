@@ -63,7 +63,7 @@ func TestCollectAs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs[myStruct](tt.args.s, tt.args.target); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.args.s.CollectTo(tt.args.target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CollectAs() = %v, want %v", got, tt.want)
 			}
 		})
@@ -138,7 +138,7 @@ func TestForEachAs(t *testing.T) {
 	for _, tt := range tests {
 		collected = []myStruct{}
 		t.Run(tt.name, func(t *testing.T) {
-			if ForEachAs[myStruct](tt.args.s, tt.args.f); !reflect.DeepEqual(collected, tt.want) {
+			if tt.args.s.ForEach(tt.args.f); !reflect.DeepEqual(collected, tt.want) {
 				t.Errorf("ForEachAs() = %v, want %v", collected, tt.want)
 			}
 		})

@@ -575,11 +575,13 @@ func (s *baseStream[T]) ForEachIndex(visit func(int, T)) {
 	}
 }
 
+// Collect returns a slice containing the elements of this stream.
 func (s *baseStream[T]) Collect() (target []T) {
 	if s == nil {
-		return
+		return []T{}
 	}
 
+	target = []T{}
 	for s.next() {
 		v := s.get()
 		target = append(target, v.(T))

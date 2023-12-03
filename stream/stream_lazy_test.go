@@ -219,9 +219,7 @@ func TestStream_FlatMapConCat(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			target := []myStruct{}
-
-			if got := CollectAs[myStruct](tt.s.FlatMapConcat(tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.s.FlatMapConcat(tt.args.f).Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FlatMapConCat() = %v, want %v", got, tt.want)
 			}
 		})
@@ -253,8 +251,7 @@ func TestStream_Distinct(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var target []myStruct
-			if got := CollectAs[myStruct](tt.s.Distinct(), target); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.s.Distinct().Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Distinct() = %v, want %v", got, tt.want)
 			}
 		})
@@ -294,8 +291,7 @@ func TestStream_DistinctBy(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var target []myStruct
-			if got := CollectAs[myStruct](tt.s.DistinctBy(tt.args.cmp), target); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.s.DistinctBy(tt.args.cmp).Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DistinctBy() = %v, want %v", got, tt.want)
 			}
 		})
@@ -346,8 +342,7 @@ func TestStream_ZipWith(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var target []myStruct
-			if got := CollectAs[myStruct](tt.s.ZipWith(tt.args.other, tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.s.ZipWith(tt.args.other, tt.args.f).Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ZipWith() = %v, want %v", got, tt.want)
 			}
 		})
@@ -506,7 +501,7 @@ func TestStream_Scan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs[myStruct](tt.s.Scan(tt.args.init, tt.args.accumf), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.s.Scan(tt.args.init, tt.args.accumf).Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Scan() = %v, want %v", got, tt.want)
 			}
 		})

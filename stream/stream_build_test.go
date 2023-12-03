@@ -59,7 +59,7 @@ func TestFromSlice(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs[myStruct](tt.args.s, tt.args.target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.args.s.AsSource(), tt.args.target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromSlice() = %v, want %v", got, tt.want)
 			}
 		})
@@ -110,7 +110,7 @@ func TestFromVar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs[myStruct](tt.args.s, tt.args.target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.args.s.AsSource(), tt.args.target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromVar() = %v, want %v", got, tt.want)
 			}
 		})
@@ -179,7 +179,7 @@ func TestFromChan(t *testing.T) {
 			// Give time to the goroutine to run before the collection
 			time.Sleep(100 * time.Millisecond)
 
-			if got := CollectAs[myStruct](FromChan(tt.args.ch), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](FromChan(tt.args.ch).AsSource(), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromChan() = %v, want %v", got, tt.want)
 			}
 		})

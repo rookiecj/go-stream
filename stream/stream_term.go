@@ -30,10 +30,10 @@ func ForEachIndex[T any](s Source[T], visit func(int, T)) {
 		return
 	}
 
-	idx := 0
+	idx := -1
 	for s.Next() {
-		visit(idx, s.Get())
 		idx++
+		visit(idx, s.Get())
 	}
 }
 

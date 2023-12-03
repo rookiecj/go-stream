@@ -129,7 +129,7 @@ func TestStream_FlatMapConCat(t *testing.T) {
 				f: func(v myStruct) Source[myStruct] {
 					ms := v
 					stream := FromSlice[myStruct]([]myStruct{ms, ms})
-					return stream
+					return stream.AsSource()
 				},
 			},
 			want: []myStruct{{"a"}, {"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}, {"d"}},
@@ -141,7 +141,7 @@ func TestStream_FlatMapConCat(t *testing.T) {
 				f: func(v myStruct) Source[myStruct] {
 					ms := v
 					stream := FromVar[myStruct]([]myStruct{ms, ms}...)
-					return stream
+					return stream.AsSource()
 				},
 			},
 			want: []myStruct{{"a"}, {"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}, {"d"}},
@@ -159,7 +159,7 @@ func TestStream_FlatMapConCat(t *testing.T) {
 					}()
 					time.Sleep(100 * time.Millisecond)
 					stream := FromChan[myStruct](ch)
-					return stream
+					return stream.AsSource()
 				},
 			},
 			want: []myStruct{{"a"}, {"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}, {"d"}},
@@ -182,7 +182,7 @@ func TestStream_FlatMapConCat(t *testing.T) {
 				f: func(v myStruct) Source[myStruct] {
 					ms := v
 					stream := FromSlice[myStruct]([]myStruct{ms, ms})
-					return stream
+					return stream.AsSource()
 				},
 			},
 			want: []myStruct{{"a"}, {"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}, {"d"}},
@@ -211,7 +211,7 @@ func TestStream_FlatMapConCat(t *testing.T) {
 					}()
 					time.Sleep(100 * time.Millisecond)
 					stream := FromChan[myStruct](ch)
-					return stream
+					return stream.AsSource()
 				},
 			},
 			want: []myStruct{{"a"}, {"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}, {"d"}},
@@ -221,7 +221,7 @@ func TestStream_FlatMapConCat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			target := []myStruct{}
 
-			if got := CollectAs[myStruct](tt.s.FlatMapConcat(tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.s.FlatMapConcat(tt.args.f).AsSource(), target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FlatMapConCat() = %v, want %v", got, tt.want)
 			}
 		})
@@ -254,7 +254,7 @@ func TestStream_Distinct(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var target []myStruct
-			if got := CollectAs[myStruct](tt.s.Distinct(), target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.s.Distinct().AsSource(), target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Distinct() = %v, want %v", got, tt.want)
 			}
 		})
@@ -295,7 +295,7 @@ func TestStream_DistinctBy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var target []myStruct
-			if got := CollectAs[myStruct](tt.s.DistinctBy(tt.args.cmp), target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.s.DistinctBy(tt.args.cmp).AsSource(), target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DistinctBy() = %v, want %v", got, tt.want)
 			}
 		})
@@ -347,7 +347,7 @@ func TestStream_ZipWith(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var target []myStruct
-			if got := CollectAs[myStruct](tt.s.ZipWith(tt.args.other, tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.s.ZipWith(tt.args.other.AsSource(), tt.args.f).AsSource(), target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ZipWith() = %v, want %v", got, tt.want)
 			}
 		})
@@ -506,7 +506,7 @@ func TestStream_Scan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs[myStruct](tt.s.Scan(tt.args.init, tt.args.accumf), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.s.Scan(tt.args.init, tt.args.accumf).AsSource(), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Scan() = %v, want %v", got, tt.want)
 			}
 		})
@@ -848,6 +848,28 @@ func TestStream_Reduce_empty(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if gotResult := tt.s.Reduce(tt.args.reducer); !reflect.DeepEqual(gotResult, tt.want) {
 				t.Errorf("Reduce() = %v, want %v", gotResult, tt.want)
+			}
+		})
+	}
+}
+
+func Test_baseStream_Count(t *testing.T) {
+	type testCase[T any] struct {
+		name      string
+		s         Stream[T]
+		wantCount int
+	}
+	tests := []testCase[myStruct]{
+		{
+			name:      "count zero",
+			s:         FromSlice([]myStruct{}),
+			wantCount: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotCount := tt.s.Count(); gotCount != tt.wantCount {
+				t.Errorf("Count() = %v, want %v", gotCount, tt.wantCount)
 			}
 		})
 	}

@@ -7,12 +7,14 @@ import (
 
 var (
 	nilAnyStream *baseStream[any]
+	nilAnySource *baseSource[any]
 )
 
 // Stream is lazy, the operations are not executed until terminal operationa are called.
 // and it is not thread safe
 type Stream[T any] interface {
-	Source[T]
+	// Source[T]
+	AsSource() Source[T]
 
 	// Filter returns a stream consisting of the elements of this stream that match the given predicate.
 	Filter(filter func(T) bool) Stream[T]
@@ -136,21 +138,52 @@ type baseStream[T any] struct {
 // source operations
 //
 
-func (s *baseStream[T]) Next() bool {
-	if s == nil {
-		return false
-	}
-	if s.next() {
-		return true
-	}
-	return false
+type baseSource[T any] struct {
+	idx  int
+	next func() bool
+	get  func() T
 }
 
-func (s *baseStream[T]) Get() (result T) {
-	if s == nil {
-		return
+func (c *baseSource[T]) Next() bool {
+	return c.next()
+}
+
+func (c *baseSource[T]) Get() T {
+	return c.get()
+}
+
+// func (s *baseStream[T]) Next() bool {
+// 	if s == nil {
+// 		return false
+// 	}
+// 	if s.next() {
+// 		return true
+// 	}
+// 	return false
+// }
+
+// func (s *baseStream[T]) Get() (result T) {
+// 	if s == nil {
+// 		return
+// 	}
+// 	return s.get().(T)
+// }
+
+func (c *baseStream[T]) AsSource() Source[T] {
+	if c == nil {
+		var nilSource baseSource[T]
+		return &nilSource
 	}
-	return s.get().(T)
+	asSource := new(baseSource[T])
+	asSource.idx = -1
+	asSource.next = func() bool {
+		return c.next()
+	}
+
+	asSource.get = func() T {
+		return c.get().(T)
+	}
+	return asSource
 }
 
 //
@@ -764,7 +797,7 @@ func (s *baseStream[T]) Count() (count int) {
 		return 0
 	}
 
-	for s.Next() {
+	for s.next() {
 		count++
 	}
 	return

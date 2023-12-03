@@ -7,7 +7,6 @@ import (
 
 var (
 	nilAnyStream *baseStream[any]
-	nilAnySource *baseSource[any]
 )
 
 // Stream is lazy, the operations are not executed until terminal operationa are called.
@@ -151,23 +150,6 @@ func (c *baseSource[T]) Next() bool {
 func (c *baseSource[T]) Get() T {
 	return c.get()
 }
-
-// func (s *baseStream[T]) Next() bool {
-// 	if s == nil {
-// 		return false
-// 	}
-// 	if s.next() {
-// 		return true
-// 	}
-// 	return false
-// }
-
-// func (s *baseStream[T]) Get() (result T) {
-// 	if s == nil {
-// 		return
-// 	}
-// 	return s.get().(T)
-// }
 
 func (c *baseStream[T]) AsSource() Source[T] {
 	if c == nil {

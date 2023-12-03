@@ -865,6 +865,11 @@ func Test_baseStream_Count(t *testing.T) {
 			s:         FromSlice([]myStruct{}),
 			wantCount: 0,
 		},
+		{
+			name:      "count 1",
+			s:         FromSlice([]myStruct{{Name: "a"}}),
+			wantCount: 1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -21,6 +21,9 @@ func FromSlice[T any](arr []T) Stream[T] {
 	stream.get = func() any {
 		return arr[stream.idx]
 	}
+	stream.getonrecover = func() RecoverFunc {
+		return nil
+	}
 	return stream
 }
 
@@ -38,6 +41,9 @@ func FromVar[T any](arr ...T) Stream[T] {
 
 	stream.get = func() any {
 		return arr[stream.idx]
+	}
+	stream.getonrecover = func() RecoverFunc {
+		return nil
 	}
 	return stream
 }
@@ -69,6 +75,9 @@ func FromChan[T any](ch <-chan T) Stream[T] {
 	stream.get = func() any {
 		return v
 	}
+	stream.getonrecover = func() RecoverFunc {
+		return nil
+	}
 	return stream
 }
 
@@ -85,6 +94,9 @@ func FromSource[T any](source Source[T]) Stream[T] {
 
 	stream.get = func() any {
 		return source.Get()
+	}
+	stream.getonrecover = func() RecoverFunc {
+		return nil
 	}
 	return stream
 }

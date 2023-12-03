@@ -77,7 +77,7 @@ Intermediate operations generate new stream which consume data from upstream and
 
 - [X] Filter
 - [x] Map/MapAny,MapIndex/MapIndexAny
-- [x] FlatMapConcat/FlatMapConcatAny
+- [x] FlatMapConcat/FlatMapConcatAny(Experimental)
 - [ ] FlatMapConcurrent
 - [X] Take, Skip
 - [X] Distinct, DistinctBy
@@ -85,7 +85,7 @@ Intermediate operations generate new stream which consume data from upstream and
 - [X] ZipWithPrev (Experimental)
 - [X] Scan/ScanAny
 - [ ] Window
-- [ ] OnError
+- [ ] OnRecover (Experimental)
 
 ### Terminal operations
 
@@ -96,15 +96,17 @@ Terminal operations are collectors which trigger streams to work. and return the
 - [X] Reduce/ReduceAny
 - [X] Fold/FoldAny
 - [X] Find/FindIndex/FindLast
-- [X] All, Any
+- [X] All,Any
 - [X] Count
 
 Slightly more type safe functions are:
 - [X] ForEachAs, ForEachIndex
-- [X] CollectAs/CollectTo
+- [X] CollectAs, CollectTo
+- [ ] CollectAsSafe, CollectionToSafe
 - [X] ReduceAs
 - [ ] FoldAs
 - [X] FindOrAs
+
 
 ## TODO
 
@@ -116,3 +118,4 @@ Slightly more type safe functions are:
 - [X] add doc
 - [X] add unittest
 - [ ] remove Source/Collector from Stream
+- [ ] add more safe terminal operations

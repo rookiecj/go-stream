@@ -69,6 +69,7 @@ Builder operations build a `Stream` from various sources like slice and array.
 - [X] FromSlice 
 - [X] FromVar
 - [X] FromChan (Experimental)
+- [X] FromSource
 
 ### Intermediate operations
 
@@ -96,6 +97,7 @@ Terminal operations are collectors which trigger streams to work. and return the
 - [X] Fold
 - [X] Find/FindIndex/FindLast
 - [ ] All, Any
+- [X] Count
 
 Slightly more type safe functions are:
 - [X] ForEachAs, ForEachIndex
@@ -111,5 +113,5 @@ Slightly more type safe functions are:
 - [ ] add more intermediate operations
 - [ ] add more terminal operations
 - [X] add doc
-- [ ] add unittest
-
+- [X] add unittest
+- [ ] remove Source/Collector from Stream

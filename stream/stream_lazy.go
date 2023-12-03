@@ -32,6 +32,9 @@ type Stream[T any] interface {
 	// FlatMapConcat returns a stream consisting of the results of
 	// replacing each element of this stream with the contents of a mapped stream produced by applying the provided mapping function to each element.
 	FlatMapConcat(f func(T) Source[T]) Stream[T]
+	// FlatMapConcatAny returns a stream consisting of the results of
+	// replacing each element of this stream with the contents of a mapped stream produced by applying the provided mapping function to each element.
+	// the function return any typed source.
 	FlatMapConcatAny(f func(T) Source[any]) Stream[any]
 
 	// Take returns a stream consisting of the first n elements of this stream.
@@ -46,11 +49,18 @@ type Stream[T any] interface {
 
 	// ZipWith returns a stream consisting of appling the given function to the elements of this stream and another stream.
 	ZipWith(other Source[T], zipf func(T, T) T) Stream[T]
+	// ZipWithAny returns a stream consisting of appling the given function to the elements of this stream and another stream.
+	// the function return any type.
 	ZipWithAny(other Source[any], zipf func(T, any) any) Stream[any]
+	// ZipWithPrev returns a stream consisting of applying the given function to
+	// the elements of this stream and its previous element.
+	// prev is nil for the first element.
 	ZipWithPrev(zipf func(prev T, ele T) T) Stream[T]
 
 	// Scan returns a stream consisting of the accumlated results of applying the given function to the elements of this stream.
 	Scan(init T, accumf func(acc T, ele T) T) Stream[T]
+	// ScanAny returns a stream consisting of the accumlated results of applying the given function to the elements of this stream.
+	// an associative accumulation function that returns any type.
 	ScanAny(init any, accumf func(acc any, ele T) any) Stream[any]
 
 	// OnEach returns a stream do nothing but visit each element of this stream.
@@ -74,22 +84,47 @@ type Source[T any] interface {
 
 // Collector is a terminal operation that collects the stream elements into a container.
 type Collector[T any] interface {
+
+	// ForEach performs an action for each element of this stream.
 	ForEach(visit func(ele T))
+	// ForEachIndex performs an action for each element of this stream.
 	ForEachIndex(visit func(int, T))
 
+	// Collect returns a slice containing the elements of this stream.
 	Collect() (target []T)
+	// CollectTo collects the stream elements into a given slice.
+	CollectTo(target []T) []T
 
+	// Reduce performs a reduction on the elements of this stream,
 	Reduce(reducer func(acc T, ele T) T) (result T)
+	// ReduceAny performs a reduction on the elements of this stream,
+	// an associative accumulation function that returns any type,
+	// and returns the reduced value as any type.
 	ReduceAny(reducer func(acc any, ele T) any) (result any)
+
+	// Fold performs a reduction on the elements of this stream,
 	Fold(init T, reducer func(acc T, ele T) T) (result T)
+	// FoldAny performs a reduction on the elements of this stream,
+	// an associative accumulation function that returns any type,
+	// and returns the reduced value as any type.
 	FoldAny(init any, reducer func(acc any, ele T) any) (result any)
 
+	// Find returns the first element of this stream matching the given predicate
 	Find(predicate func(T) bool) (found T, err error)
+	// FindOr returns the first element of this stream matching the given predicate, or default value if no such element exists.
 	FindOr(predicate func(ele T) bool, defvalue T) T
+	// FindIndex returns the index of the first element of this down stream, not source, matching the given predicate,
 	FindIndex(predicate func(T) bool) int
+	// FindLast returns the last element of this stream matching the given predicate.
 	FindLast(predicate func(T) bool) (found T, err error)
+	// FindLastOr returns the last element of this stream matching the given predicate, or default value if no such element exists.
 	FindLastOr(predicate func(T) bool, defvalue T) (found T)
+	// FindLastIndex returns the index of the last element of this stream matching the given predicate.
 	FindLastIndex(predicate func(T) bool) (found int)
+
+	// Count returns the count of elements of this stream.
+	// it does not consume the stream, specifically, it does not call Get().
+	Count() int
 }
 
 type baseStream[T any] struct {
@@ -496,21 +531,21 @@ func (s *baseStream[T]) OnEach(visit func(v T)) Stream[T] {
 		return s
 	}
 
-	oneachstream := new(baseStream[T])
-	oneachstream.idx = -1
-	oneachstream.next = func() bool {
+	eachstream := new(baseStream[T])
+	eachstream.idx = -1
+	eachstream.next = func() bool {
 		if s.next() {
-			oneachstream.idx++
+			eachstream.idx++
 			return true
 		}
 		return false
 	}
-	oneachstream.get = func() any {
+	eachstream.get = func() any {
 		v := s.get()
 		visit(v.(T))
 		return v
 	}
-	return oneachstream
+	return eachstream
 }
 
 //
@@ -540,16 +575,36 @@ func (s *baseStream[T]) ForEachIndex(visit func(int, T)) {
 	}
 }
 
+// Collect returns a slice containing the elements of this stream.
 func (s *baseStream[T]) Collect() (target []T) {
 	if s == nil {
-		return
+		return []T{}
+	}
+
+	target = []T{}
+	for s.next() {
+		v := s.get()
+		target = append(target, v.(T))
+	}
+	return
+}
+
+// CollectTo collects the stream elements into a given slice.
+func (s *baseStream[T]) CollectTo(target []T) []T {
+	if s == nil {
+		return target
+	}
+
+	// nil target
+	if target == nil {
+		return []T{}
 	}
 
 	for s.next() {
 		v := s.get()
 		target = append(target, v.(T))
 	}
-	return
+	return target
 }
 
 // Reduce performs a reduction on the elements of this stream,
@@ -573,6 +628,11 @@ func (s *baseStream[T]) Reduce(reducer func(acc T, ele T) T) (result T) {
 	return result
 }
 
+// ReduceAny performs a reduction on the elements of this stream,
+// an associative accumulation function that returns any type,
+// and returns the reduced value as any type.
+// [a, b, c, d] => f(f(f(a, b), c), d)
+// if the stream is empty returns nil
 func (s *baseStream[T]) ReduceAny(reducer func(acc any, ele T) any) (result any) {
 	if s == nil {
 		return
@@ -717,4 +777,17 @@ func (s *baseStream[T]) FindLastIndex(predicate func(T) bool) (found int) {
 		}
 	}
 	return found
+}
+
+// Count returns the count of elements of this stream.
+// it does not consume the stream, specifically, it does not call Get().
+func (s *baseStream[T]) Count() (count int) {
+	if s == nil {
+		return 0
+	}
+
+	for s.Next() {
+		count++
+	}
+	return
 }

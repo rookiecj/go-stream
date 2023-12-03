@@ -219,9 +219,7 @@ func TestStream_FlatMapConCat(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			target := []myStruct{}
-
-			if got := CollectAs[myStruct](tt.s.FlatMapConcat(tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.s.FlatMapConcat(tt.args.f).Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FlatMapConCat() = %v, want %v", got, tt.want)
 			}
 		})
@@ -253,8 +251,7 @@ func TestStream_Distinct(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var target []myStruct
-			if got := CollectAs[myStruct](tt.s.Distinct(), target); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.s.Distinct().Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Distinct() = %v, want %v", got, tt.want)
 			}
 		})
@@ -294,8 +291,7 @@ func TestStream_DistinctBy(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var target []myStruct
-			if got := CollectAs[myStruct](tt.s.DistinctBy(tt.args.cmp), target); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.s.DistinctBy(tt.args.cmp).Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DistinctBy() = %v, want %v", got, tt.want)
 			}
 		})
@@ -346,8 +342,7 @@ func TestStream_ZipWith(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var target []myStruct
-			if got := CollectAs[myStruct](tt.s.ZipWith(tt.args.other, tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.s.ZipWith(tt.args.other, tt.args.f).Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ZipWith() = %v, want %v", got, tt.want)
 			}
 		})
@@ -506,7 +501,7 @@ func TestStream_Scan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs[myStruct](tt.s.Scan(tt.args.init, tt.args.accumf), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.s.Scan(tt.args.init, tt.args.accumf).Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Scan() = %v, want %v", got, tt.want)
 			}
 		})
@@ -848,6 +843,229 @@ func TestStream_Reduce_empty(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if gotResult := tt.s.Reduce(tt.args.reducer); !reflect.DeepEqual(gotResult, tt.want) {
 				t.Errorf("Reduce() = %v, want %v", gotResult, tt.want)
+			}
+		})
+	}
+}
+
+func Test_baseStream_Map(t *testing.T) {
+
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+		{"e"},
+	}
+
+	type args[T any] struct {
+		mapf func(T) T
+	}
+	type testCase[T any] struct {
+		name string
+		s    Stream[T]
+		args args[T]
+		want []T
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "map zero",
+			s:    FromSlice([]myStruct{}),
+			args: args[myStruct]{
+				mapf: func(ele myStruct) myStruct {
+					return myStruct{
+						Name: ele.Name + "!",
+					}
+				},
+			},
+			want: []myStruct{},
+		},
+		{
+			name: "map as-is",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				mapf: func(ele myStruct) myStruct {
+					return ele
+				},
+			},
+			want: arr1,
+		},
+		{
+			name: "map copy",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				mapf: func(ele myStruct) myStruct {
+					return myStruct{
+						Name: ele.Name,
+					}
+				},
+			},
+			want: arr1,
+		},
+		{
+			name: "map title!",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				mapf: func(ele myStruct) myStruct {
+					return myStruct{
+						Name: ele.Name + "!",
+					}
+				},
+			},
+			want: []myStruct{
+				{"a!"},
+				{"b!"},
+				{"c!"},
+				{"d!"},
+				{"e!"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.Map(tt.args.mapf).Collect(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Map() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_baseStream_MapAny(t *testing.T) {
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+		{"e"},
+	}
+
+	arr1Names := []string{
+		"a",
+		"b",
+		"c",
+		"d",
+		"e",
+	}
+
+	type args[T any] struct {
+		mapf func(T) any
+	}
+	type testCase[T any] struct {
+		name string
+		s    Stream[T]
+		args args[T]
+		want []string
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "mapany zero",
+			s:    FromSlice([]myStruct{}),
+			args: args[myStruct]{
+				mapf: func(ele myStruct) any {
+					return ele.Name
+				},
+			},
+			want: []string{},
+		},
+		{
+			name: "map as-is",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				mapf: func(ele myStruct) any {
+					return ele.Name
+				},
+			},
+			want: arr1Names,
+		},
+		{
+			name: "map title!",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				mapf: func(ele myStruct) any {
+					return ele.Name + "!"
+				},
+			},
+			want: []string{
+				"a!",
+				"b!",
+				"c!",
+				"d!",
+				"e!",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CollectAs[string](tt.s.MapAny(tt.args.mapf)); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("MapAny() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_baseStream_CollectTo(t *testing.T) {
+
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+		{"e"},
+	}
+
+	type args[T any] struct {
+		target []T
+	}
+	type testCase[T any] struct {
+		name string
+		s    Stream[T]
+		args args[T]
+		want []T
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "nil target",
+			s:    FromSlice([]myStruct{}),
+			args: args[myStruct]{
+				target: nil,
+			},
+			want: []myStruct{},
+		},
+		{
+			name: "zero/empty",
+			s:    FromSlice([]myStruct{}),
+			args: args[myStruct]{
+				target: []myStruct{},
+			},
+			want: []myStruct{},
+		},
+		{
+			name: "collect as-is",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				target: []myStruct{},
+			},
+			want: arr1,
+		},
+		{
+			name: "collect to not empty target",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				target: []myStruct{
+					{"a"},
+				},
+			},
+			want: func() (result []myStruct) {
+				result = append(result, myStruct{"a"})
+				result = append(result, arr1...)
+				return
+			}(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.CollectTo(tt.args.target); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("CollectTo() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -71,3 +71,20 @@ func FromChan[T any](ch <-chan T) Stream[T] {
 	}
 	return stream
 }
+
+func FromSource[T any](source Source[T]) Stream[T] {
+	stream := new(baseStream[T])
+	stream.idx = -1
+	stream.next = func() bool {
+		if source.Next() {
+			stream.idx++
+			return true
+		}
+		return false
+	}
+
+	stream.get = func() any {
+		return source.Get()
+	}
+	return stream
+}

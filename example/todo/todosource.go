@@ -77,7 +77,7 @@ type todoSource struct {
 	todos []Todo
 }
 
-func newTodos(todos []Todo) *todoSource {
+func newTodoSource(todos []Todo) *todoSource {
 	return &todoSource{
 		idx:   -1,
 		todos: todos,
@@ -98,11 +98,31 @@ func (c *todoSource) Get() Todo {
 
 func main() {
 
-	todoS := newTodos(Todos)
+	todoS := newTodoSource(Todos)
 	length := s.FromSource[Todo](todoS).
 		Filter(func(todo Todo) bool {
 			return todo.userId == 1
 		}).
 		Count()
-	fmt.Println("todos=", length)
+	fmt.Println("todos for user1 count=", length)
+
+	todosource := newTodoSource(Todos)
+	todos1 := s.FromSource[Todo](todosource).
+		Filter(func(ele Todo) bool {
+			return ele.userId == 1
+		}).Collect()
+	fmt.Println("len(todos for user1)=", len(todos1))
+
+	todosource = newTodoSource(Todos)
+	titlestream := s.FromSource[Todo](todosource).
+		Filter(func(ele Todo) bool {
+			return ele.userId == 2
+		}).
+		MapAny(func(ele Todo) any {
+			return ele.title
+		})
+	titles := s.CollectAs[string](titlestream)
+	for _, title := range titles {
+		fmt.Println(title)
+	}
 }

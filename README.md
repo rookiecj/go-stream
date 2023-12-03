@@ -96,6 +96,7 @@ Terminal operations are collectors which trigger streams to work. and return the
 - [X] Fold
 - [X] Find/FindIndex/FindLast
 - [ ] All, Any
+- [X] Count
 
 Slightly more type safe functions are:
 - [X] ForEachAs, ForEachIndex

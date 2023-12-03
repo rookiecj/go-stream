@@ -103,9 +103,6 @@ func main() {
 		Filter(func(todo Todo) bool {
 			return todo.userId == 1
 		}).
-		OnEach(func(v Todo) {
-			fmt.Println(v)
-		}).
 		Count()
 	fmt.Println("todos=", length)
 }

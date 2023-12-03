@@ -69,6 +69,7 @@ Builder operations build a `Stream` from various sources like slice and array.
 - [X] FromSlice 
 - [X] FromVar
 - [X] FromChan (Experimental)
+- [X] FromSource
 
 ### Intermediate operations
 
@@ -112,5 +113,5 @@ Slightly more type safe functions are:
 - [ ] add more intermediate operations
 - [ ] add more terminal operations
 - [X] add doc
-- [ ] add unittest
-
+- [X] add unittest
+- [ ] remove Source/Collector from Stream

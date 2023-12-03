@@ -37,14 +37,14 @@ func TestStream_Collect(t *testing.T) {
 	}
 
 	type args[T any] struct {
-		s      *Stream[any]
+		s      Stream[T]
 		target []T
 	}
 	type testCase[T any] struct {
 		name string
 		args args[T]
 		//want []T
-		want []interface{}
+		want []T
 	}
 	tests := []testCase[myStruct]{
 		{
@@ -52,25 +52,36 @@ func TestStream_Collect(t *testing.T) {
 			args: args[myStruct]{
 				s: FromSlice(emptyArr),
 			},
-			want: toInterface([]myStruct{}),
+			//want: toInterface([]myStruct{}),
+			want: []myStruct{},
 		},
 		{
 			name: "empty slice",
 			args: args[myStruct]{
 				s: FromSlice(emptySlice),
 			},
-			want: toInterface([]myStruct{}),
+			//want: toInterface([]myStruct{}),
+			want: []myStruct{},
 		},
 		{
 			name: "filter_map",
 			args: args[myStruct]{
-				s: FromSlice(arr).Filter(func(v any) bool {
-					return len(v.(myStruct).Name) == 1
-				}).Map(func(v any) any {
-					return myStruct{v.(myStruct).Name + "!"}
-				}),
+				s: FromSlice(arr).
+					Filter(func(v myStruct) bool {
+						return len(v.Name) == 1
+					}).
+					Map(func(v myStruct) myStruct {
+						return myStruct{v.Name + "!"}
+					}),
 			},
-			want: toInterface([]myStruct{{"a!"}, {"c!"}, {"e!"}, {"g!"}, {"i!"}}),
+			//want: toInterface([]myStruct{{"a!"}, {"c!"}, {"e!"}, {"g!"}, {"i!"}}),
+			want: []myStruct{
+				{"a!"},
+				{"c!"},
+				{"e!"},
+				{"g!"},
+				{"i!"},
+			},
 		},
 	}
 
@@ -82,7 +93,7 @@ func TestStream_Collect(t *testing.T) {
 				wantValue := reflect.ValueOf(tt.want)
 				gotValueT := gotValue.Type()
 				wantValueT := wantValue.Type()
-				fmt.Printf("%v, %v\n", gotValueT, wantValueT)
+				fmt.Printf("type %v, %v\n", gotValueT, wantValueT)
 				//[]interface {}, []stream.myStruct
 				if !reflect.DeepEqual(got, tt.want) {
 					t.Errorf("Collect() = %v, want %v", got, tt.want)
@@ -101,22 +112,22 @@ func TestStream_FlatMapConCat(t *testing.T) {
 		{"d"},
 	}
 
-	type args struct {
-		f func(any) *Stream[any]
+	type args[T any] struct {
+		f func(T) Source[T]
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
-		args args
+		s    Stream[T]
+		args args[T]
 		want []myStruct
 	}
 	tests := []testCase[myStruct]{
 		{
 			name: "slice slice",
 			s:    FromSlice(arr),
-			args: args{
-				f: func(v any) *Stream[any] {
-					ms := v.(myStruct)
+			args: args[myStruct]{
+				f: func(v myStruct) Source[myStruct] {
+					ms := v
 					stream := FromSlice[myStruct]([]myStruct{ms, ms})
 					return stream
 				},
@@ -126,9 +137,9 @@ func TestStream_FlatMapConCat(t *testing.T) {
 		{
 			name: "slice variatic",
 			s:    FromSlice(arr),
-			args: args{
-				f: func(v any) *Stream[any] {
-					ms := v.(myStruct)
+			args: args[myStruct]{
+				f: func(v myStruct) Source[myStruct] {
+					ms := v
 					stream := FromVar[myStruct]([]myStruct{ms, ms}...)
 					return stream
 				},
@@ -138,12 +149,12 @@ func TestStream_FlatMapConCat(t *testing.T) {
 		{
 			name: "slice chan",
 			s:    FromSlice(arr),
-			args: args{
-				f: func(v any) *Stream[any] {
+			args: args[myStruct]{
+				f: func(v myStruct) Source[myStruct] {
 					ch := make(chan myStruct, 0)
 					go func() {
-						ch <- v.(myStruct)
-						ch <- v.(myStruct)
+						ch <- v
+						ch <- v
 						close(ch)
 					}()
 					time.Sleep(100 * time.Millisecond)
@@ -155,7 +166,7 @@ func TestStream_FlatMapConCat(t *testing.T) {
 		},
 		{
 			name: "chan slice",
-			s: func() *Stream[any] {
+			s: func() Stream[myStruct] {
 				ch := make(chan myStruct, 0)
 				go func() {
 					for _, ele := range arr {
@@ -167,9 +178,9 @@ func TestStream_FlatMapConCat(t *testing.T) {
 				stream := FromChan[myStruct](ch)
 				return stream
 			}(),
-			args: args{
-				f: func(v any) *Stream[any] {
-					ms := v.(myStruct)
+			args: args[myStruct]{
+				f: func(v myStruct) Source[myStruct] {
+					ms := v
 					stream := FromSlice[myStruct]([]myStruct{ms, ms})
 					return stream
 				},
@@ -178,7 +189,7 @@ func TestStream_FlatMapConCat(t *testing.T) {
 		},
 		{
 			name: "chan chan",
-			s: func() *Stream[any] {
+			s: func() Stream[myStruct] {
 				ch := make(chan myStruct, 0)
 				go func() {
 					for _, ele := range arr {
@@ -190,12 +201,12 @@ func TestStream_FlatMapConCat(t *testing.T) {
 				stream := FromChan[myStruct](ch)
 				return stream
 			}(),
-			args: args{
-				f: func(v any) *Stream[any] {
+			args: args[myStruct]{
+				f: func(v myStruct) Source[myStruct] {
 					ch := make(chan myStruct, 0)
 					go func() {
-						ch <- v.(myStruct)
-						ch <- v.(myStruct)
+						ch <- v
+						ch <- v
 						close(ch)
 					}()
 					time.Sleep(100 * time.Millisecond)
@@ -209,7 +220,8 @@ func TestStream_FlatMapConCat(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			target := []myStruct{}
-			if got := CollectAs(tt.s.FlatMapConcat(tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
+
+			if got := CollectAs[myStruct](tt.s.FlatMapConcat(tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FlatMapConCat() = %v, want %v", got, tt.want)
 			}
 		})
@@ -229,7 +241,7 @@ func TestStream_Distinct(t *testing.T) {
 
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
+		s    Stream[T]
 		want []T
 	}
 	tests := []testCase[myStruct]{
@@ -242,7 +254,7 @@ func TestStream_Distinct(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var target []myStruct
-			if got := CollectAs(tt.s.Distinct(), target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.s.Distinct(), target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Distinct() = %v, want %v", got, tt.want)
 			}
 		})
@@ -260,11 +272,11 @@ func TestStream_DistinctBy(t *testing.T) {
 	}
 
 	type args struct {
-		cmp func(any, any) bool
+		cmp func(myStruct, myStruct) bool
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
+		s    Stream[T]
 		args args
 		want []T
 	}
@@ -273,7 +285,7 @@ func TestStream_DistinctBy(t *testing.T) {
 			name: "distinctBy with deepequal",
 			s:    FromSlice(arr),
 			args: args{
-				cmp: func(old, v any) bool {
+				cmp: func(old, v myStruct) bool {
 					return reflect.DeepEqual(old, v)
 				},
 			},
@@ -283,7 +295,7 @@ func TestStream_DistinctBy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var target []myStruct
-			if got := CollectAs(tt.s.DistinctBy(tt.args.cmp), target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.s.DistinctBy(tt.args.cmp), target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DistinctBy() = %v, want %v", got, tt.want)
 			}
 		})
@@ -296,6 +308,7 @@ func TestStream_ZipWith(t *testing.T) {
 		{"b"},
 		{"c"},
 		{"d"},
+		{"e"},
 	}
 
 	arr2 := []myStruct{
@@ -305,25 +318,25 @@ func TestStream_ZipWith(t *testing.T) {
 		{"4"},
 	}
 
-	type args struct {
-		other *Stream[any]
-		f     func(any, any) any
+	type args[T any] struct {
+		other Stream[T]
+		f     func(T, T) T
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
-		args args
+		s    Stream[T]
+		args args[T]
 		want []T
 	}
 	tests := []testCase[myStruct]{
 		{
 			name: "zipwith",
 			s:    FromSlice(arr1),
-			args: args{
+			args: args[myStruct]{
 				other: FromSlice(arr2),
-				f: func(ele1 any, ele2 any) any {
+				f: func(ele1, ele2 myStruct) myStruct {
 					result := myStruct{
-						Name: ele1.(myStruct).Name + ele2.(myStruct).Name,
+						Name: ele1.Name + ele2.Name,
 					}
 					return result
 				},
@@ -334,7 +347,7 @@ func TestStream_ZipWith(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var target []myStruct
-			if got := CollectAs(tt.s.ZipWith(tt.args.other, tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.s.ZipWith(tt.args.other, tt.args.f), target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ZipWith() = %v, want %v", got, tt.want)
 			}
 		})
@@ -343,25 +356,26 @@ func TestStream_ZipWith(t *testing.T) {
 
 func TestStream_Intermediates_NilReceiver(t *testing.T) {
 
-	type args struct {
-		f func(s *Stream[any]) *Stream[any]
+	type args[T any] struct {
+		f func(s Stream[T]) Stream[T]
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
-		args args
+		s    Stream[T]
+		args args[T]
 		want reflect.Type
 	}
 
-	var s *Stream[any]
+	//var s Stream[myStruct]
+	var s *baseStream[myStruct]
 	typeOfNilStream := reflect.TypeOf(s)
 
 	tests := []testCase[myStruct]{
 		{
 			name: "filter",
 			s:    s,
-			args: args{
-				f: func(s *Stream[any]) *Stream[any] {
+			args: args[myStruct]{
+				f: func(s Stream[myStruct]) Stream[myStruct] {
 					return s.Filter(nil)
 				},
 			},
@@ -370,8 +384,8 @@ func TestStream_Intermediates_NilReceiver(t *testing.T) {
 		{
 			name: "map",
 			s:    s,
-			args: args{
-				f: func(s *Stream[any]) *Stream[any] {
+			args: args[myStruct]{
+				f: func(s Stream[myStruct]) Stream[myStruct] {
 					return s.Map(nil)
 				},
 			},
@@ -380,8 +394,8 @@ func TestStream_Intermediates_NilReceiver(t *testing.T) {
 		{
 			name: "mapIndex",
 			s:    s,
-			args: args{
-				f: func(s *Stream[any]) *Stream[any] {
+			args: args[myStruct]{
+				f: func(s Stream[myStruct]) Stream[myStruct] {
 					return s.MapIndex(nil)
 				},
 			},
@@ -390,8 +404,8 @@ func TestStream_Intermediates_NilReceiver(t *testing.T) {
 		{
 			name: "flatmapconcat",
 			s:    s,
-			args: args{
-				f: func(s *Stream[any]) *Stream[any] {
+			args: args[myStruct]{
+				f: func(s Stream[myStruct]) Stream[myStruct] {
 					return s.FlatMapConcat(nil)
 				},
 			},
@@ -400,8 +414,8 @@ func TestStream_Intermediates_NilReceiver(t *testing.T) {
 		{
 			name: "Take",
 			s:    s,
-			args: args{
-				f: func(s *Stream[any]) *Stream[any] {
+			args: args[myStruct]{
+				f: func(s Stream[myStruct]) Stream[myStruct] {
 					return s.Take(0)
 				},
 			},
@@ -410,8 +424,8 @@ func TestStream_Intermediates_NilReceiver(t *testing.T) {
 		{
 			name: "Skip",
 			s:    s,
-			args: args{
-				f: func(s *Stream[any]) *Stream[any] {
+			args: args[myStruct]{
+				f: func(s Stream[myStruct]) Stream[myStruct] {
 					return s.Skip(0)
 				},
 			},
@@ -420,8 +434,8 @@ func TestStream_Intermediates_NilReceiver(t *testing.T) {
 		{
 			name: "Distinct",
 			s:    s,
-			args: args{
-				f: func(s *Stream[any]) *Stream[any] {
+			args: args[myStruct]{
+				f: func(s Stream[myStruct]) Stream[myStruct] {
 					return s.Distinct()
 				},
 			},
@@ -430,8 +444,8 @@ func TestStream_Intermediates_NilReceiver(t *testing.T) {
 		{
 			name: "DistinctBy",
 			s:    s,
-			args: args{
-				f: func(s *Stream[any]) *Stream[any] {
+			args: args[myStruct]{
+				f: func(s Stream[myStruct]) Stream[myStruct] {
 					return s.DistinctBy(nil)
 				},
 			},
@@ -440,8 +454,8 @@ func TestStream_Intermediates_NilReceiver(t *testing.T) {
 		{
 			name: "ZipWith",
 			s:    s,
-			args: args{
-				f: func(s *Stream[any]) *Stream[any] {
+			args: args[myStruct]{
+				f: func(s Stream[myStruct]) Stream[myStruct] {
 					return s.ZipWith(nil, nil)
 				},
 			},
@@ -469,11 +483,11 @@ func TestStream_Scan(t *testing.T) {
 
 	type args[T any] struct {
 		init   T
-		accumf func(acc any, ele any) any
+		accumf func(acc T, ele T) T
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
+		s    Stream[T]
 		args args[T]
 		want []myStruct
 	}
@@ -483,8 +497,8 @@ func TestStream_Scan(t *testing.T) {
 			s:    FromSlice(arr1),
 			args: args[myStruct]{
 				init: init,
-				accumf: func(acc, ele any) any {
-					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				accumf: func(acc, ele myStruct) myStruct {
+					return myStruct{acc.Name + ele.Name}
 				},
 			},
 			want: []myStruct{{"!a"}, {"!ab"}, {"!abc"}, {"!abcd"}},
@@ -492,7 +506,7 @@ func TestStream_Scan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs(tt.s.Scan(tt.args.init, tt.args.accumf), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.s.Scan(tt.args.init, tt.args.accumf), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Scan() = %v, want %v", got, tt.want)
 			}
 		})
@@ -508,22 +522,22 @@ func TestStream_FindIndex(t *testing.T) {
 		{"d"},
 	}
 
-	type args struct {
-		predicate func(any) bool
+	type args[T any] struct {
+		predicate func(T) bool
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
-		args args
+		s    Stream[T]
+		args args[T]
 		want int
 	}
 	tests := []testCase[myStruct]{
 		{
 			name: "find/0",
 			s:    FromSlice(arr1),
-			args: args{
-				predicate: func(ele any) bool {
-					return ele.(myStruct) == myStruct{"a"}
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return ele == myStruct{"a"}
 				},
 			},
 			want: 0,
@@ -531,9 +545,9 @@ func TestStream_FindIndex(t *testing.T) {
 		{
 			name: "find/3",
 			s:    FromSlice(arr1),
-			args: args{
-				predicate: func(ele any) bool {
-					return ele.(myStruct) == myStruct{"d"}
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return ele == myStruct{"d"}
 				},
 			},
 			want: 3,
@@ -541,8 +555,8 @@ func TestStream_FindIndex(t *testing.T) {
 		{
 			name: "find/-1(not found)",
 			s:    FromSlice(arr1),
-			args: args{
-				predicate: func(ele any) bool {
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
 					return false
 				},
 			},
@@ -567,22 +581,22 @@ func TestStream_FindLastIndex(t *testing.T) {
 		{"d"},
 	}
 
-	type args struct {
-		predicate func(any) bool
+	type args[T any] struct {
+		predicate func(T) bool
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
-		args args
+		s    Stream[T]
+		args args[T]
 		want int
 	}
 	tests := []testCase[myStruct]{
 		{
 			name: "find/0",
 			s:    FromSlice(arr1),
-			args: args{
-				predicate: func(ele any) bool {
-					return ele.(myStruct) == myStruct{"a"}
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return ele == myStruct{"a"}
 				},
 			},
 			want: 0,
@@ -590,9 +604,9 @@ func TestStream_FindLastIndex(t *testing.T) {
 		{
 			name: "find/3",
 			s:    FromSlice(arr1),
-			args: args{
-				predicate: func(ele any) bool {
-					return ele.(myStruct) == myStruct{"d"}
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return ele == myStruct{"d"}
 				},
 			},
 			want: 3,
@@ -600,9 +614,9 @@ func TestStream_FindLastIndex(t *testing.T) {
 		{
 			name: "find/2",
 			s:    FromSlice(arr1),
-			args: args{
-				predicate: func(ele any) bool {
-					return ele.(myStruct) == myStruct{"b"}
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return ele == myStruct{"b"}
 				},
 			},
 			want: 2,
@@ -610,8 +624,8 @@ func TestStream_FindLastIndex(t *testing.T) {
 		{
 			name: "find/-1(not found)",
 			s:    FromSlice(arr1),
-			args: args{
-				predicate: func(ele any) bool {
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
 					return false
 				},
 			},
@@ -639,11 +653,11 @@ func TestStream_Fold(t *testing.T) {
 
 	type args[T any] struct {
 		init    T
-		reducer func(acc any, ele any) any
+		reducer func(acc, ele T) T
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
+		s    Stream[T]
 		args args[T]
 		want T
 	}
@@ -653,8 +667,8 @@ func TestStream_Fold(t *testing.T) {
 			s:    FromSlice(emptySlice),
 			args: args[myStruct]{
 				init: myStruct{"!"},
-				reducer: func(acc any, ele any) any {
-					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				reducer: func(acc, ele myStruct) myStruct {
+					return myStruct{acc.Name + ele.Name}
 				},
 			},
 			want: myStruct{"!"},
@@ -664,8 +678,8 @@ func TestStream_Fold(t *testing.T) {
 			s:    FromSlice(arr1),
 			args: args[myStruct]{
 				init: myStruct{"!"},
-				reducer: func(acc any, ele any) any {
-					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				reducer: func(acc, ele myStruct) myStruct {
+					return myStruct{acc.Name + ele.Name}
 				},
 			},
 			want: myStruct{"!abcd"},
@@ -680,7 +694,7 @@ func TestStream_Fold(t *testing.T) {
 	}
 }
 
-func TestStream_Fold_Reduce_As_Array(t *testing.T) {
+func TestStream_FoldAny_As_Array(t *testing.T) {
 	var emptySlice []myStruct
 
 	arr1 := []myStruct{
@@ -692,11 +706,11 @@ func TestStream_Fold_Reduce_As_Array(t *testing.T) {
 
 	type args[T any] struct {
 		init    []T
-		reducer func(acc any, ele any) any
+		reducer func(acc any, ele T) any
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
+		s    Stream[T]
 		args args[T]
 		want []T
 	}
@@ -706,8 +720,8 @@ func TestStream_Fold_Reduce_As_Array(t *testing.T) {
 			s:    FromSlice(emptySlice),
 			args: args[myStruct]{
 				init: []myStruct{},
-				reducer: func(acc any, ele any) any {
-					return append(acc.([]myStruct), ele.(myStruct))
+				reducer: func(acc any, ele myStruct) any {
+					return append(acc.([]myStruct), ele)
 				},
 			},
 			want: []myStruct{},
@@ -717,8 +731,8 @@ func TestStream_Fold_Reduce_As_Array(t *testing.T) {
 			s:    FromSlice(emptySlice),
 			args: args[myStruct]{
 				init: []myStruct{{"!"}},
-				reducer: func(acc any, ele any) any {
-					return append(acc.([]myStruct), ele.(myStruct))
+				reducer: func(acc any, ele myStruct) any {
+					return append(acc.([]myStruct), ele)
 				},
 			},
 			want: []myStruct{{"!"}},
@@ -728,8 +742,8 @@ func TestStream_Fold_Reduce_As_Array(t *testing.T) {
 			s:    FromSlice(arr1),
 			args: args[myStruct]{
 				init: []myStruct{},
-				reducer: func(acc any, ele any) any {
-					return append(acc.([]myStruct), ele.(myStruct))
+				reducer: func(acc any, ele myStruct) any {
+					return append(acc.([]myStruct), ele)
 				},
 			},
 			want: []myStruct{{"a"}, {"b"}, {"c"}, {"d"}},
@@ -737,8 +751,8 @@ func TestStream_Fold_Reduce_As_Array(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotResult := tt.s.Fold(tt.args.init, tt.args.reducer); !reflect.DeepEqual(gotResult, tt.want) {
-				t.Errorf("Fold() = %v, want %v", gotResult, tt.want)
+			if gotResult := tt.s.FoldAny(tt.args.init, tt.args.reducer); !reflect.DeepEqual(gotResult, tt.want) {
+				t.Errorf("FoldAny() = %v, want %v", gotResult, tt.want)
 			}
 		})
 	}
@@ -753,11 +767,11 @@ func TestStream_Reduce(t *testing.T) {
 	}
 
 	type args[T any] struct {
-		reducer func(acc any, ele any) any
+		reducer func(acc, ele T) T
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
+		s    Stream[T]
 		args args[T]
 		want T
 	}
@@ -778,8 +792,8 @@ func TestStream_Reduce(t *testing.T) {
 			name: "reduce 1",
 			s:    FromSlice(arr1[:1]),
 			args: args[myStruct]{
-				reducer: func(acc any, ele any) any {
-					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				reducer: func(acc, ele myStruct) myStruct {
+					return myStruct{acc.Name + ele.Name}
 				},
 			},
 			want: myStruct{"a"},
@@ -788,8 +802,8 @@ func TestStream_Reduce(t *testing.T) {
 			name: "reduce",
 			s:    FromSlice(arr1),
 			args: args[myStruct]{
-				reducer: func(acc any, ele any) any {
-					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+				reducer: func(acc, ele myStruct) myStruct {
+					return myStruct{acc.Name + ele.Name}
 				},
 			},
 			want: myStruct{"abcd"},
@@ -808,27 +822,26 @@ func TestStream_Reduce_empty(t *testing.T) {
 	var emptySlice []myStruct
 
 	type args[T any] struct {
-		reducer func(acc any, ele any) any
+		reducer func(acc, ele T) T
 	}
 	type testCase[T any] struct {
 		name string
-		s    *Stream[any]
+		s    Stream[T]
 		args args[T]
-		//want T
-		want any // <- should be any
+		want T
 	}
 
 	tests := []testCase[myStruct]{
 		{
-			name: "reduce empty return nil with no type",
+			name: "reduce empty return empty",
 			s:    FromSlice(emptySlice),
 			args: args[myStruct]{
-				reducer: func(acc any, ele any) any {
+				reducer: func(acc, ele myStruct) myStruct {
 					// won't be called
-					return myStruct{acc.(myStruct).Name + ele.(myStruct).Name}
+					return myStruct{acc.Name + ele.Name}
 				},
 			},
-			want: nil,
+			want: myStruct{},
 		},
 	}
 	for _, tt := range tests {

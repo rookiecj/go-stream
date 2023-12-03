@@ -1,10 +1,9 @@
 # go-stream
 
-`go-stream` is a `Go` package to help the stream processing of elements in more functional manner.
+`go-stream` is a `Go` package to help processing stream of elements in more functional manner.
 
 `Stream` uses iterator pattern for visiting each element of a stream.
 It is lazy, which means the operations are not executed until terminal operation is called.
-and it is not thread safe.
 
 ## How to use
 
@@ -41,20 +40,16 @@ func main() {
 		{"i"},
 	}
 
-	stream := s.FromSlice(arr)
-	imm1 := stream.Filter(func(v any) bool {
-		return len(v.(myStruct).Name) == 1
-	}).Map(func(v any) any {
-		return myStruct{v.(myStruct).Name + "!"}
+	s.FromSlice(arr).
+	Filter(func(v myStruct) bool {
+		return len(v.Name) == 1
+	}).
+	Map(func(v myStruct) myStruct {
+		return myStruct{v.Name + "!"}
+	}).
+	ForEach(func(ele myStruct) {
+		fmt.Println(ele)
 	})
-
-	myStructs := s.CollectAs(imm1, []myStruct{})
-	fmt.Println(myStructs)
-
-	arrempty := []myStruct{}
-	imm2 := s.FromSlice(arrempty)
-	myStructs2 := s.CollectAs(imm2, []myStruct{})
-	fmt.Println(myStructs2)
 }
 
 ```
@@ -87,7 +82,7 @@ Intermediate operations generate new stream which consume data from upstream and
 - [X] Distinct, DistinctBy
 - [ ] Zip(with Pair)
 - [X] ZipWith
-- [ ] ZipWithPrev (Experimental)
+- [X] ZipWithPrev (Experimental)
 - [X] Scan
 - [ ] Window
 
@@ -97,13 +92,13 @@ Terminal operations are collectors which trigger streams to work. and return the
 
 - [X] ForEach, ForEachIndex
 - [X] Collect
-- [ ] Reduce (Experimental)
+- [X] Reduce (Experimental)
 - [X] Fold
-- [X] Find/FindLast
+- [X] Find/FindIndex/FindLast
 - [ ] All, Any
 
 Slightly more type safe functions are:
-- [X] ForEachAs, ForEachAsIndex
+- [X] ForEachAs, ForEachIndex
 - [X] CollectAs
 - [ ] ReduceAs
 - [ ] FoldAs
@@ -112,9 +107,9 @@ Slightly more type safe functions are:
 
 - [X] make ToStream lazy
 - [X] add more Builders 
-- [ ] Stream to interface
+- [X] Stream to interface
 - [ ] add more intermediate operations
 - [ ] add more terminal operations
-- [ ] add doc
+- [X] add doc
 - [ ] add unittest
 

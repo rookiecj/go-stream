@@ -23,7 +23,7 @@ func TestCollectAs(t *testing.T) {
 	}
 
 	type args[T any] struct {
-		s      *Stream[any]
+		s      Stream[T]
 		target []T
 	}
 	type testCase[T any] struct {
@@ -51,10 +51,10 @@ func TestCollectAs(t *testing.T) {
 		{
 			name: "filter_map",
 			args: args[myStruct]{
-				s: FromSlice(arr).Filter(func(v any) bool {
-					return len(v.(myStruct).Name) == 1
-				}).Map(func(v any) any {
-					return myStruct{v.(myStruct).Name + "!"}
+				s: FromSlice(arr).Filter(func(v myStruct) bool {
+					return len(v.Name) == 1
+				}).Map(func(v myStruct) myStruct {
+					return myStruct{v.Name + "!"}
 				}),
 				target: []myStruct{},
 			},
@@ -63,7 +63,7 @@ func TestCollectAs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs(tt.args.s, tt.args.target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.args.s, tt.args.target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CollectAs() = %v, want %v", got, tt.want)
 			}
 		})
@@ -89,7 +89,7 @@ func TestForEachAs(t *testing.T) {
 	}
 
 	type args[T any] struct {
-		s *Stream[any]
+		s Stream[T]
 		f func(T)
 	}
 	type testCase[T any] struct {
@@ -121,11 +121,13 @@ func TestForEachAs(t *testing.T) {
 		{
 			name: "filter_map",
 			args: args[myStruct]{
-				s: FromSlice(arr).Filter(func(v any) bool {
-					return len(v.(myStruct).Name) == 1
-				}).Map(func(v any) any {
-					return myStruct{v.(myStruct).Name + "!"}
-				}),
+				s: FromSlice(arr).
+					Filter(func(v myStruct) bool {
+						return len(v.Name) == 1
+					}).
+					Map(func(v myStruct) myStruct {
+						return myStruct{v.Name + "!"}
+					}),
 				f: func(v myStruct) {
 					collected = append(collected, v)
 				},
@@ -136,7 +138,7 @@ func TestForEachAs(t *testing.T) {
 	for _, tt := range tests {
 		collected = []myStruct{}
 		t.Run(tt.name, func(t *testing.T) {
-			if ForEachAs(tt.args.s, tt.args.f); !reflect.DeepEqual(collected, tt.want) {
+			if ForEachAs[myStruct](tt.args.s, tt.args.f); !reflect.DeepEqual(collected, tt.want) {
 				t.Errorf("ForEachAs() = %v, want %v", collected, tt.want)
 			}
 		})

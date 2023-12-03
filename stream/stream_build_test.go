@@ -19,7 +19,7 @@ func TestFromSlice(t *testing.T) {
 	}
 
 	type args[T any] struct {
-		s      *Stream[any]
+		s      Stream[T]
 		target []T
 	}
 	type testCase[T any] struct {
@@ -47,10 +47,10 @@ func TestFromSlice(t *testing.T) {
 		{
 			name: "slice fiter map",
 			args: args[myStruct]{
-				s: FromSlice(arr).Filter(func(v any) bool {
-					return len(v.(myStruct).Name) == 1
-				}).Map(func(v any) any {
-					return myStruct{v.(myStruct).Name + "!"}
+				s: FromSlice(arr).Filter(func(v myStruct) bool {
+					return len(v.Name) == 1
+				}).Map(func(v myStruct) myStruct {
+					return myStruct{v.Name + "!"}
 				}),
 				target: []myStruct{},
 			},
@@ -59,7 +59,7 @@ func TestFromSlice(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs(tt.args.s, tt.args.target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.args.s, tt.args.target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromSlice() = %v, want %v", got, tt.want)
 			}
 		})
@@ -68,7 +68,7 @@ func TestFromSlice(t *testing.T) {
 
 func TestFromVar(t *testing.T) {
 	type args[T any] struct {
-		s      *Stream[any]
+		s      Stream[T]
 		target []T
 	}
 	type testCase[T any] struct {
@@ -97,10 +97,10 @@ func TestFromVar(t *testing.T) {
 			name: "variatic fiter map",
 			args: args[myStruct]{
 				s: FromVar(myStruct{"a"}, myStruct{"bb"}, myStruct{"c"}, myStruct{"ddd"}, myStruct{"e"}).
-					Filter(func(v any) bool {
-						return len(v.(myStruct).Name) == 1
-					}).Map(func(v any) any {
-					return myStruct{v.(myStruct).Name + "!"}
+					Filter(func(v myStruct) bool {
+						return len(v.Name) == 1
+					}).Map(func(v myStruct) myStruct {
+					return myStruct{v.Name + "!"}
 				}),
 				target: []myStruct{},
 			},
@@ -110,7 +110,7 @@ func TestFromVar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CollectAs(tt.args.s, tt.args.target); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](tt.args.s, tt.args.target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromVar() = %v, want %v", got, tt.want)
 			}
 		})
@@ -126,7 +126,7 @@ func TestFromChan(t *testing.T) {
 	type testCase[T any] struct {
 		name string
 		args args[T]
-		want []myStruct
+		want []T
 	}
 	tests := []testCase[myStruct]{
 		{
@@ -179,7 +179,7 @@ func TestFromChan(t *testing.T) {
 			// Give time to the goroutine to run before the collection
 			time.Sleep(100 * time.Millisecond)
 
-			if got := CollectAs(FromChan(tt.args.ch), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
+			if got := CollectAs[myStruct](FromChan(tt.args.ch), []myStruct{}); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromChan() = %v, want %v", got, tt.want)
 			}
 		})
@@ -194,12 +194,12 @@ func TestFromChan_ReadWaitForSource(t *testing.T) {
 
 	go func() {
 		s := FromChan(jobs)
-		s.OnEach(func(ele any) {
-			fmt.Printf("ele: %d -> ", ele.(int))
-		}).Map(func(ele any) any {
-			return ele.(int) * 100
-		}).ForEach(func(ele any) {
-			fmt.Printf("got: %d\n", ele.(int))
+		s.OnEach(func(ele int) {
+			fmt.Printf("ele: %d -> ", ele)
+		}).Map(func(ele int) int {
+			return ele * 100
+		}).ForEach(func(ele int) {
+			fmt.Printf("got: %d\n", ele)
 		})
 		done <- true
 	}()
@@ -235,12 +235,12 @@ func TestFromChan_WriteReadSequentially(t *testing.T) {
 	close(jobs)
 
 	s := FromChan(jobs)
-	s.OnEach(func(ele any) {
-		fmt.Printf("ele: %d -> ", ele.(int))
-	}).Map(func(ele any) any {
-		return ele.(int) * 100
-	}).ForEach(func(ele any) {
-		fmt.Printf("got: %d\n", ele.(int))
+	s.OnEach(func(ele int) {
+		fmt.Printf("ele: %d -> ", ele)
+	}).Map(func(ele int) int {
+		return ele * 100
+	}).ForEach(func(ele int) {
+		fmt.Printf("got: %d\n", ele)
 	})
 
 }
@@ -267,12 +267,12 @@ func TestFromChan_ReadOnClosedChannel(t *testing.T) {
 
 	go func() {
 		s := FromChan(jobs)
-		s.OnEach(func(ele any) {
-			fmt.Printf("ele: %d -> ", ele.(int))
-		}).Map(func(ele any) any {
-			return ele.(int) * 100
-		}).ForEach(func(ele any) {
-			fmt.Printf("got: %d\n", ele.(int))
+		s.OnEach(func(ele int) {
+			fmt.Printf("ele: %d -> ", ele)
+		}).Map(func(ele int) int {
+			return ele * 100
+		}).ForEach(func(ele int) {
+			fmt.Printf("got: %d\n", ele)
 		})
 		done <- true
 	}()
@@ -300,12 +300,12 @@ func TestFromChan_ReadWriteConcurrently(t *testing.T) {
 
 	go func() {
 		s := FromChan(jobs)
-		s.OnEach(func(ele any) {
-			fmt.Printf("ele: %d -> ", ele.(int))
-		}).Map(func(ele any) any {
-			return ele.(int) * 100
-		}).ForEach(func(ele any) {
-			fmt.Printf("got: %d\n", ele.(int))
+		s.OnEach(func(ele int) {
+			fmt.Printf("ele: %d -> ", ele)
+		}).Map(func(ele int) int {
+			return ele * 100
+		}).ForEach(func(ele int) {
+			fmt.Printf("got: %d\n", ele)
 		})
 		done <- true
 	}()

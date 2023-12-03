@@ -1,168 +1,343 @@
 package stream
 
-import "reflect"
+import (
+	"errors"
+	"reflect"
+)
 
-// Stream uses iterator pattern
-// which means it is lazy, and the operations are not executed until terminal operation is called
-// Stream is not thread safe
-type Stream[T any] struct {
-	idx  int // full index
-	next func() bool
-	get  func() T
+var (
+	nilAnyStream *baseStream[any]
+)
+
+// Stream is lazy, the operations are not executed until terminal operationa are called.
+// and it is not thread safe
+type Stream[T any] interface {
+	Source[T]
+
+	Filter(filter func(T) bool) Stream[T]
+
+	Map(mapf func(T) T) Stream[T]
+	MapAny(mapf func(T) any) Stream[any]
+	MapIndex(mapf func(int, T) T) Stream[T]
+	MapIndexAny(mapf func(int, T) any) Stream[any]
+
+	FlatMapConcat(f func(T) Source[T]) Stream[T]
+	FlatMapConcatAny(f func(T) Source[any]) Stream[any]
+
+	Take(n int) Stream[T]
+	Skip(n int) Stream[T]
+
+	Distinct() Stream[T]
+	DistinctBy(cmp func(old T, new T) bool) Stream[T]
+
+	ZipWith(other Source[T], zipf func(T, T) T) Stream[T]
+	ZipWithAny(other Source[any], zipf func(T, any) any) Stream[any]
+	ZipWithPrev(zipf func(prev T, ele T) T) Stream[T]
+
+	Scan(init T, accumf func(acc T, ele T) T) Stream[T]
+	ScanAny(init any, accumf func(acc any, ele T) any) Stream[any]
+
+	OnEach(visit func(v T)) Stream[T]
+
+	Collector[T]
+}
+
+// Source is source of a stream.
+type Source[T any] interface {
+
+	// Next는 element가 존재하는지 여부를 반환한다.
+	Next() bool
+
+	// Next에 의해서 확인한 element을 반환한다.
+	// 호출시마다 동일한 값을 리턴한다.
+	Get() T
+}
+
+// terminal operations
+type Collector[T any] interface {
+	ForEach(visit func(ele T))
+	ForEachIndex(visit func(int, T))
+
+	Collect() (target []T)
+
+	Reduce(reducer func(acc T, ele T) T) (result T)
+	ReduceAny(reducer func(acc any, ele T) any) (result any)
+	Fold(init T, reducer func(acc T, ele T) T) (result T)
+	FoldAny(init any, reducer func(acc any, ele T) any) (result any)
+
+	Find(predicate func(T) bool) (found T, err error)
+	FindOr(predicate func(ele T) bool, defvalue T) T
+	FindIndex(predicate func(T) bool) int
+	FindLast(predicate func(T) bool) (found T, err error)
+	FindLastOr(predicate func(T) bool, defvalue T) (found T)
+	FindLastIndex(predicate func(T) bool) (found int)
+}
+
+type baseStream[T any] struct {
+	idx   int // full index
+	limit int // -1, unlimited or unknown
+	next  func() bool
+	get   func() any
+}
+
+// source operations
+func (s *baseStream[T]) Next() bool {
+	if s == nil {
+		return false
+	}
+	if s.next() {
+		return true
+	}
+	return false
+}
+
+func (s *baseStream[T]) Get() (result T) {
+	if s == nil {
+		return
+	}
+	return s.get().(T)
 }
 
 //
-// intermediate operations
+// stream operations
 //
 
-// Filter returns a stream consisting of the elements of this stream that match the given predicate.
-func (s *Stream[any]) Filter(filter func(any) bool) *Stream[any] {
+func (s *baseStream[T]) Filter(filter func(T) bool) Stream[T] {
 	if s == nil {
 		return s
 	}
-
-	var stream Stream[any]
-	stream.next = func() bool {
+	downstream := new(baseStream[T])
+	downstream.idx = -1
+	downstream.next = func() bool {
 		for s.next() {
-			if filter(s.get()) {
+			downstream.idx++
+			if filter(s.get().(T)) {
 				return true
 			}
 		}
 		return false
 	}
 
-	stream.get = func() any {
+	downstream.get = func() any {
 		return s.get()
 	}
-
-	return &stream
+	return downstream
 }
 
-// Map returns a stream consisting of the results of applying the given function to the elements of this stream.
-func (s *Stream[any]) Map(mapf func(any) any) *Stream[any] {
+//
+//func (stream *baseStream[T]) FilterAny(filter func(any) bool) Stream[any] {
+//	downstream := new(baseStream[any])
+//	downstream.idx = -1
+//	downstream.next = func() bool {
+//		for stream.next() {
+//			downstream.idx++
+//			if filter(stream.get()) {
+//				return true
+//			}
+//		}
+//		return true
+//	}
+//
+//	downstream.get = func() any {
+//		return stream.get()
+//	}
+//	return downstream
+//}
+
+func (s *baseStream[T]) Map(mapf func(T) T) Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	var stream Stream[any]
-	stream.next = func() bool {
-		return s.next()
-	}
-	stream.get = func() any {
-		return mapf(s.get())
-	}
-	return &stream
-}
-
-// MapIndex returns a stream consisting of the results of applying the given function to the elements of this stream.
-func (s *Stream[any]) MapIndex(mapf func(int, any) any) *Stream[any] {
-	if s == nil {
-		return s
-	}
-
-	var stream Stream[any]
-
-	stream.idx = -1
-	stream.next = func() bool {
+	downstream := new(baseStream[T])
+	downstream.idx = -1
+	downstream.next = func() bool {
 		if s.next() {
-			stream.idx++
+			downstream.idx++
 			return true
 		}
 		return false
 	}
-	stream.get = func() any {
-		return mapf(stream.idx, s.get())
+
+	downstream.get = func() any {
+		return mapf(s.get().(T))
 	}
-	return &stream
+	return downstream
+}
+
+func (s *baseStream[T]) MapAny(mapf func(T) any) Stream[any] {
+	if s == nil {
+		return nilAnyStream
+	}
+
+	// T -> any
+	downstream := new(baseStream[any])
+	downstream.idx = -1
+	downstream.next = func() bool {
+		if s.next() {
+			downstream.idx++
+			return true
+		}
+		return false
+	}
+
+	downstream.get = func() any {
+		return mapf(s.get().(T))
+	}
+	return downstream
+}
+
+// MapIndex returns a stream consisting of the results of applying the given function to the elements of this stream.
+func (s *baseStream[T]) MapIndex(mapf func(int, T) T) Stream[T] {
+	if s == nil {
+		return s
+	}
+
+	downstream := new(baseStream[T])
+	downstream.idx = -1
+	downstream.next = func() bool {
+		if s.next() {
+			downstream.idx++
+			return true
+		}
+		return false
+	}
+	downstream.get = func() any {
+		return mapf(downstream.idx, s.get().(T))
+	}
+	return downstream
+}
+
+// MapIndexAny returns a stream consisting of the results of applying the given function to the elements of this stream.
+func (s *baseStream[T]) MapIndexAny(mapf func(int, T) any) Stream[any] {
+	if s == nil {
+		return nilAnyStream
+	}
+
+	downstream := new(baseStream[any])
+	downstream.idx = -1
+	downstream.next = func() bool {
+		if s.next() {
+			downstream.idx++
+			return true
+		}
+		return false
+	}
+	downstream.get = func() any {
+		return mapf(downstream.idx, s.get().(T))
+	}
+	return downstream
 }
 
 // FlatMapConcat returns a stream consisting of the results of
 // replacing each element of this stream with the contents of
 // a mapped stream produced by applying the provided mapping function to each element.
-func (s *Stream[any]) FlatMapConcat(f func(any) *Stream[any]) *Stream[any] {
+func (s *baseStream[T]) FlatMapConcat(fmap func(ele T) Source[T]) Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	var stream Stream[any]
-	var astream *Stream[any]
-	stream.next = func() bool {
-		if astream != nil && astream.next() {
+	downstream := new(baseStream[T])
+	downstream.idx = -1
+	var cursource Source[T]
+	downstream.next = func() bool {
+	loop:
+		if cursource != nil && cursource.Next() {
+			downstream.idx++
 			return true
-		} else {
-			astream = nil
-			for astream == nil {
-				if !s.next() {
-					return false
-				}
-				astream = f(s.get())
-				if astream.next() {
-					return true
-				}
-				astream = nil
-			}
-			return false
 		}
+		for s.next() {
+			cursource = fmap(s.get().(T))
+			goto loop
+		}
+		return false
 	}
 
-	stream.get = func() any {
-		return astream.get()
+	downstream.get = func() any {
+		return cursource.Get()
 	}
-	return &stream
+	return downstream
+}
+
+func (s *baseStream[T]) FlatMapConcatAny(fmap func(ele T) Source[any]) Stream[any] {
+	if s == nil {
+		return nilAnyStream
+	}
+
+	downstream := new(baseStream[any])
+	downstream.idx = -1
+	var astream Source[any]
+	downstream.next = func() bool {
+	loop:
+		if astream != nil && astream.Next() {
+			downstream.idx++
+			return true
+		}
+		for s.next() {
+			astream = fmap(s.get().(T))
+			goto loop
+		}
+		return false
+	}
+
+	downstream.get = func() any {
+		return astream.Get()
+	}
+	return downstream
 }
 
 // Take returns a stream consisting of the first n elements of this stream.
-func (s *Stream[any]) Take(n int) *Stream[any] {
+func (s *baseStream[T]) Take(n int) Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	var stream Stream[any]
-	stream.idx = -1
-	stream.next = func() bool {
-		if stream.idx+1 == n {
+	downstream := new(baseStream[T])
+	downstream.idx = -1
+	downstream.next = func() bool {
+		if downstream.idx+1 == n {
 			return false
 		}
-		stream.idx++
+		downstream.idx++
 		return s.next()
 	}
-	stream.get = func() any {
+	downstream.get = func() any {
 		return s.get()
 	}
-	return &stream
+	return downstream
 }
 
 // Skip returns a stream consisting of the remaining elements of this stream after discarding the first n elements of the stream.
-func (s *Stream[any]) Skip(n int) *Stream[any] {
+func (s *baseStream[T]) Skip(n int) Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	var stream Stream[any]
-	stream.idx = -1
-	stream.next = func() bool {
-		for stream.idx+1 < n {
+	downstream := new(baseStream[T])
+	downstream.idx = -1
+	downstream.next = func() bool {
+		for downstream.idx+1 < n {
 			if !s.next() {
 				return false
 			}
-			stream.idx++
+			downstream.idx++
 		}
 		return s.next()
 	}
-	stream.get = func() any {
+	downstream.get = func() any {
 		return s.get()
 	}
-	return &stream
+	return downstream
 }
 
 // Distinct returns a stream consisting of the subsequent distinct elements of this stream.
 // [a, a, b, c, a] => [a, b, c, a]
-func (s *Stream[any]) Distinct() *Stream[any] {
+func (s *baseStream[T]) Distinct() Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	return s.DistinctBy(func(old, v any) bool {
+	return s.DistinctBy(func(old, v T) bool {
 		return reflect.DeepEqual(old, v)
 	})
 }
@@ -171,18 +346,18 @@ func (s *Stream[any]) Distinct() *Stream[any] {
 // [a(0), a(1), b, c, a] => [a(0), b, c, a]
 // cmd is a function to compare two elements, return true if they are equal.
 // With the first element, nil is given to old.
-func (s *Stream[any]) DistinctBy(cmp func(old any, new any) bool) *Stream[any] {
+func (s *baseStream[T]) DistinctBy(cmp func(old, new T) bool) Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	var stream Stream[any]
-	var old any
-	stream.idx = -1
-	stream.next = func() bool {
+	downstream := new(baseStream[T])
+	var old T
+	downstream.idx = -1
+	downstream.next = func() bool {
 		for s.next() {
-			stream.idx++
-			v := s.get()
+			downstream.idx++
+			v := s.get().(T)
 			if !cmp(old, v) {
 				old = v
 				return true
@@ -191,118 +366,167 @@ func (s *Stream[any]) DistinctBy(cmp func(old any, new any) bool) *Stream[any] {
 		}
 		return false
 	}
-	stream.get = func() any {
+	downstream.get = func() any {
 		return old
 	}
-	return &stream
+	return downstream
 }
 
-// // Zip returns a stream consisting of the elements of this stream and another stream.
-// // returns a stream of Pair[any, any]
-// func (s *Stream[any]) Zip(other *Stream[any]) *Stream[any] {
-// 	var stream Stream[any]
-// 	stream.next = func() bool {
-// 		return s.next() && other.next()
-// 	}
-// 	stream.get = func() any {
-// 		return []any{s.get(), other.get()}
-// 	}
-// 	return &stream
-// }
-
 // ZipWith returns a stream consisting of appling the given function to the elements of this stream and another stream.
-func (s *Stream[any]) ZipWith(other *Stream[any], f func(any, any) any) *Stream[any] {
+func (s *baseStream[T]) ZipWith(other Source[T], zipf func(T, T) T) Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	var stream Stream[any]
-	stream.next = func() bool {
-		return s.next() && other.next()
+	downstream := new(baseStream[T])
+	downstream.idx = -1
+	downstream.next = func() bool {
+		if s.next() && other.Next() {
+			downstream.idx++
+			return true
+		}
+		return false
 	}
-	stream.get = func() any {
-		return f(s.get(), other.get())
+	downstream.get = func() any {
+		return zipf(s.get().(T), other.Get())
 	}
-	return &stream
+	return downstream
+}
+
+// ZipWithAny returns a stream consisting of appling the given function to the elements of this stream and another stream.
+func (s *baseStream[T]) ZipWithAny(other Source[any], zipf func(T, any) any) Stream[any] {
+	if s == nil {
+		return nilAnyStream
+	}
+
+	downstream := new(baseStream[any])
+	downstream.idx = -1
+	downstream.next = func() bool {
+		if s.next() && other.Next() {
+			downstream.idx++
+			return true
+		}
+		return false
+	}
+	downstream.get = func() any {
+		return zipf(s.get().(T), other.Get())
+	}
+	return downstream
 }
 
 // ZipWithPrev returns a stream consisting of applying the given function to
 // the elements of this stream and its previous element.
 // [a, b, c, d] => [f(nil, a), f(a, b), f(b, c), f(c, d)]
-func (s *Stream[any]) ZipWithPrev(f func(prev any, ele any) any) *Stream[any] {
+func (s *baseStream[T]) ZipWithPrev(zipf func(prev T, ele T) T) Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	var stream Stream[any]
-	var prev any
-	stream.next = func() bool {
-		return s.next()
+	downstream := new(baseStream[T])
+	downstream.idx = -1
+	var prev T
+	downstream.next = func() bool {
+		if s.next() {
+			downstream.idx++
+			return true
+		}
+		return false
 	}
-	stream.get = func() any {
-		v := s.get()
-		result := f(prev, v)
+	downstream.get = func() any {
+		v := s.get().(T)
+		result := zipf(prev, v)
 		prev = v
 		return result
 	}
-	return &stream
+	return downstream
 }
 
 // Scan returns a stream consisting of the accumlated results of applying the given function to the elements of this stream.
 //
 //	with source=[1, 2, 3, 4], init=0 and func(acc, i) { acc + i } produces [1, 3, 6, 10]
-func (s *Stream[any]) Scan(init any, accumf func(acc any, ele any) any) *Stream[any] {
+func (s *baseStream[T]) Scan(init T, accumf func(acc T, ele T) T) Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	var stream Stream[any]
+	downstream := new(baseStream[T])
+	downstream.idx = -1
 	acc := init
-	stream.next = func() bool {
-		return s.next()
+	downstream.next = func() bool {
+		if s.next() {
+			downstream.idx++
+			return true
+		}
+		return false
 	}
-	stream.get = func() any {
-		acc = accumf(acc, s.get())
+	downstream.get = func() any {
+		acc = accumf(acc, s.get().(T))
 		return acc
 	}
-	return &stream
+	return downstream
+}
+
+func (s *baseStream[T]) ScanAny(init any, accumf func(acc any, ele T) any) Stream[any] {
+	if s == nil {
+		return nilAnyStream
+	}
+
+	downstream := new(baseStream[any])
+	downstream.idx = -1
+	acc := init
+	downstream.next = func() bool {
+		if s.next() {
+			downstream.idx++
+			return true
+		}
+		return false
+	}
+	downstream.get = func() any {
+		acc = accumf(acc, s.get().(T))
+		return acc
+	}
+	return downstream
 }
 
 // OnEach returns a stream do nothing but visit each element of this stream.
-func (s *Stream[any]) OnEach(visit func(v any)) *Stream[any] {
+func (s *baseStream[T]) OnEach(visit func(v T)) Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	var stream Stream[any]
-	stream.next = func() bool {
-		return s.next()
+	downstream := new(baseStream[T])
+	downstream.idx = -1
+	downstream.next = func() bool {
+		if s.next() {
+			downstream.idx++
+			return true
+		}
+		return false
 	}
-	stream.get = func() any {
+	downstream.get = func() any {
 		v := s.get()
-		visit(v)
+		visit(v.(T))
 		return v
 	}
-	return &stream
+	return downstream
 }
 
 //
 // terminal operations
 //
 
-// ForEach performs an action for each element of this stream.
-func (s *Stream[any]) ForEach(f func(any)) {
+func (s *baseStream[T]) ForEach(visit func(T)) {
 	if s == nil {
 		return
 	}
 
 	for s.next() {
-		f(s.get())
+		visit(s.get().(T))
 	}
 }
 
 // ForEachIndex performs an action for each element of this stream.
-func (s *Stream[any]) ForEachIndex(f func(int, any)) {
+func (s *baseStream[T]) ForEachIndex(visit func(int, T)) {
 	if s == nil {
 		return
 	}
@@ -310,18 +534,18 @@ func (s *Stream[any]) ForEachIndex(f func(int, any)) {
 	idx := -1
 	for s.next() {
 		idx++
-		f(idx, s.get())
+		visit(idx, s.get().(T))
 	}
 }
 
-func (s *Stream[any]) Collect() (target []any) {
+func (s *baseStream[T]) Collect() (target []T) {
 	if s == nil {
 		return
 	}
 
 	for s.next() {
 		v := s.get()
-		target = append(target, v)
+		target = append(target, v.(T))
 	}
 	return
 }
@@ -331,7 +555,23 @@ func (s *Stream[any]) Collect() (target []any) {
 // and returns the reduced value.
 // [a, b, c, d] => f(f(f(a, b), c), d)
 // if the stream is empty returns nil
-func (s *Stream[any]) Reduce(reducer func(acc any, ele any) any) (result any) {
+func (s *baseStream[T]) Reduce(reducer func(acc T, ele T) T) (result T) {
+	if s == nil {
+		return
+	}
+	if s.next() {
+		result = s.get().(T)
+	} else {
+		// nothing to return
+		return
+	}
+	for s.next() {
+		result = reducer(result, s.get().(T))
+	}
+	return result
+}
+
+func (s *baseStream[T]) ReduceAny(reducer func(acc any, ele T) any) (result any) {
 	if s == nil {
 		return
 	}
@@ -343,14 +583,14 @@ func (s *Stream[any]) Reduce(reducer func(acc any, ele any) any) (result any) {
 	}
 	for s.next() {
 		v := s.get()
-		result = reducer(result, v)
+		result = reducer(result, v.(T))
 	}
 	return result
 }
 
 // Fold performs a reduction on the elements of this stream, using the provided identity value
 // and an associative accumulation function, and returns the reduced value.
-func (s *Stream[any]) Fold(init any, reducer func(acc any, ele any) any) (result any) {
+func (s *baseStream[T]) Fold(init T, reducer func(acc T, ele T) T) (result T) {
 	if s == nil {
 		return init
 	}
@@ -358,24 +598,49 @@ func (s *Stream[any]) Fold(init any, reducer func(acc any, ele any) any) (result
 	result = init
 	for s.next() {
 		v := s.get()
-		result = reducer(result, v)
+		result = reducer(result, v.(T))
+	}
+	return result
+}
+
+func (s *baseStream[T]) FoldAny(init any, reducer func(acc any, ele T) any) (result any) {
+	if s == nil {
+		return init
+	}
+
+	result = init
+	for s.next() {
+		v := s.get()
+		result = reducer(result, v.(T))
 	}
 	return result
 }
 
 // Find returns the first element of this stream matching the given predicate
-func (s *Stream[any]) Find(predicate func(any) bool) (found any) {
-	return s.FindOr(predicate, found)
+func (s *baseStream[T]) Find(predicate func(T) bool) (found T, err error) {
+	if s == nil {
+		err = errors.New("upstream is nil")
+		return
+	}
+
+	for s.next() {
+		v := s.get().(T)
+		if predicate(v) {
+			return v, nil
+		}
+	}
+	err = nil
+	return
 }
 
 // FindOr returns the first element of this stream matching the given predicate, or defvalue if no such element exists.
-func (s *Stream[any]) FindOr(predicate func(any) bool, defvalue any) any {
+func (s *baseStream[T]) FindOr(predicate func(ele T) bool, defvalue T) T {
 	if s == nil {
 		return defvalue
 	}
 
 	for s.next() {
-		v := s.get()
+		v := s.get().(T)
 		if predicate(v) {
 			return v
 		}
@@ -383,9 +648,9 @@ func (s *Stream[any]) FindOr(predicate func(any) bool, defvalue any) any {
 	return defvalue
 }
 
-// FindIndex returns the index of the first element of this stream matching the given predicate,
+// FindIndex returns the index of the first element of this down stream, not source, matching the given predicate,
 // or -1 if no such element exists.
-func (s *Stream[any]) FindIndex(predicate func(any) bool) int {
+func (s *baseStream[T]) FindIndex(predicate func(T) bool) int {
 	if s == nil {
 		return -1
 	}
@@ -394,38 +659,39 @@ func (s *Stream[any]) FindIndex(predicate func(any) bool) int {
 	for s.next() {
 		idx++
 		v := s.get()
-		if predicate(v) {
+		if predicate(v.(T)) {
 			return idx
 		}
 	}
 	return -1
 }
 
-// FindLast returns the last element of this stream matching the given predicate
-func (s *Stream[any]) FindLast(predicate func(any) bool) (found any) {
+// FindLast returns the last element of this stream matching the given predicate, otherwise -1.
+func (s *baseStream[T]) FindLast(predicate func(T) bool) (found T, err error) {
 	if s == nil {
+		err = errors.New("upstream is nil")
 		return
 	}
 
 	for s.next() {
-		v := s.get()
+		v := s.get().(T)
 		if predicate(v) {
 			found = v
 		}
 	}
-	return
+	return found, nil
 }
 
 // FindLastOr returns the last element of this stream matching the given predicate,
 // or defvalue if no such element exists.
-func (s *Stream[any]) FindLastOr(predicate func(any) bool, defvalue any) (found any) {
+func (s *baseStream[T]) FindLastOr(predicate func(T) bool, defvalue T) (found T) {
 	if s == nil {
 		return defvalue
 	}
 
 	found = defvalue
 	for s.next() {
-		v := s.get()
+		v := s.get().(T)
 		if predicate(v) {
 			found = v
 		}
@@ -433,8 +699,8 @@ func (s *Stream[any]) FindLastOr(predicate func(any) bool, defvalue any) (found 
 	return
 }
 
-// FindLastIndex returns the index of the last element of this stream matching the given predicate.
-func (s *Stream[any]) FindLastIndex(predicate func(any) bool) (found int) {
+// FindLastIndex returns the index of the last element of this stream matching the given predicate, otherwise -1.
+func (s *baseStream[T]) FindLastIndex(predicate func(T) bool) (found int) {
 	if s == nil {
 		return -1
 	}
@@ -444,7 +710,7 @@ func (s *Stream[any]) FindLastIndex(predicate func(any) bool) (found int) {
 	for s.next() {
 		idx++
 		v := s.get()
-		if predicate(v) {
+		if predicate(v.(T)) {
 			found = idx
 		}
 	}

@@ -1,18 +1,17 @@
 package stream
 
-// FromSlice build a Stream from given slice
-func FromSlice[T any](arr []T) *Stream[any] {
-	// Stream should be work on empty slice with type safe manner
-	//if arr == nil {
-	//	var nilReceiver *Stream[any]
-	//	return nilReceiver
-	//}
+//
+// stream builders
+//
 
-	stream := new(Stream[any])
+// FromSlice build a Stream from given slice
+func FromSlice[T any](arr []T) Stream[T] {
+
+	stream := new(baseStream[T])
 	stream.idx = -1
-	limit := len(arr)
+	stream.limit = len(arr)
 	stream.next = func() bool {
-		if stream.idx+1 == limit {
+		if stream.idx+1 == stream.limit {
 			return false
 		}
 		stream.idx++
@@ -26,8 +25,8 @@ func FromSlice[T any](arr []T) *Stream[any] {
 }
 
 // FromVar build a Stream from variatic
-func FromVar[T any](arr ...T) *Stream[any] {
-	stream := new(Stream[any])
+func FromVar[T any](arr ...T) Stream[T] {
+	stream := new(baseStream[T])
 	stream.idx = -1
 	stream.next = func() bool {
 		if stream.idx+1 == len(arr) {
@@ -44,26 +43,31 @@ func FromVar[T any](arr ...T) *Stream[any] {
 }
 
 // FromChan build a Stream from given channel
-func FromChan[T any](ch <-chan T) (stream *Stream[any]) {
-	if ch == nil {
-		var nilStream *Stream[any]
-		return nilStream
-	}
-
-	stream = new(Stream[any])
+func FromChan[T any](ch <-chan T) Stream[T] {
+	stream := new(baseStream[T])
 	stream.idx = -1
-
 	var v T
 	var ok = true
-	stream.next = func() bool {
-		v, ok = <-ch
-		if ok {
-			stream.idx++
+	if ch == nil {
+		stream.next = func() bool {
+			return false
 		}
-		return ok
+	} else {
+		stream.next = func() bool {
+			//if !ok {
+			//	done <- true
+			//	return false
+			//}
+			v, ok = <-ch
+			if ok {
+				stream.idx++
+			}
+			return ok
+		}
 	}
+
 	stream.get = func() any {
 		return v
 	}
-	return
+	return stream
 }

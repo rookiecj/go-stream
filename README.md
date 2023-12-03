@@ -76,34 +76,35 @@ Builder operations build a `Stream` from various sources like slice and array.
 Intermediate operations generate new stream which consume data from upstream and apply operator on it.
 
 - [X] Filter
-- [x] Map
-- [x] FlatMapConcat
+- [x] Map/MapAny,MapIndex/MapIndexAny
+- [x] FlatMapConcat/FlatMapConcatAny
 - [ ] FlatMapConcurrent
 - [X] Take, Skip
 - [X] Distinct, DistinctBy
-- [ ] Zip(with Pair)
-- [X] ZipWith
+- [X] ZipWith/ZipWithAny
 - [X] ZipWithPrev (Experimental)
-- [X] Scan
+- [X] Scan/ScanAny
 - [ ] Window
+- [ ] OnError
 
 ### Terminal operations
 
 Terminal operations are collectors which trigger streams to work. and return the result of the stream.
 
 - [X] ForEach, ForEachIndex
-- [X] Collect
-- [X] Reduce (Experimental)
-- [X] Fold
+- [X] Collect/CollectTo
+- [X] Reduce/ReduceAny
+- [X] Fold/FoldAny
 - [X] Find/FindIndex/FindLast
-- [ ] All, Any
+- [X] All, Any
 - [X] Count
 
 Slightly more type safe functions are:
 - [X] ForEachAs, ForEachIndex
-- [X] CollectAs
-- [ ] ReduceAs
+- [X] CollectAs/CollectTo
+- [X] ReduceAs
 - [ ] FoldAs
+- [X] FindOrAs
 
 ## TODO
 

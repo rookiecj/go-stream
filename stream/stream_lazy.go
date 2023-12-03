@@ -125,6 +125,12 @@ type Collector[T any] interface {
 	// Count returns the count of elements of this stream.
 	// it does not consume the stream, specifically, it does not call Get().
 	Count() int
+
+	// All returns true if all elements of this stream match the given predicate.
+	All(predicate func(T) bool) bool
+
+	// Any returns true if any elements of this stream match the given predicate.
+	Any(predicate func(T) bool) bool
 }
 
 type baseStream[T any] struct {
@@ -786,8 +792,40 @@ func (s *baseStream[T]) Count() (count int) {
 		return 0
 	}
 
-	for s.Next() {
+	for s.next() {
 		count++
 	}
 	return
+}
+
+func (s *baseStream[T]) All(predicate func(T) bool) bool {
+	if s == nil {
+		return false
+	}
+
+	// for empty
+	result := false
+	for s.next() {
+		result = predicate(s.get().(T))
+		if !result {
+			return false
+		}
+	}
+	return result
+}
+
+func (s *baseStream[T]) Any(predicate func(T) bool) bool {
+	if s == nil {
+		return false
+	}
+
+	// for empty
+	result := false
+	for s.next() {
+		result = predicate(s.get().(T))
+		if result {
+			return true
+		}
+	}
+	return result
 }

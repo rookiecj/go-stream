@@ -92,6 +92,8 @@ type Collector[T any] interface {
 
 	// Collect returns a slice containing the elements of this stream.
 	Collect() (target []T)
+	// CollectTo collects the stream elements into a given slice.
+	CollectTo(target []T) []T
 
 	// Reduce performs a reduction on the elements of this stream,
 	Reduce(reducer func(acc T, ele T) T) (result T)
@@ -583,6 +585,24 @@ func (s *baseStream[T]) Collect() (target []T) {
 		target = append(target, v.(T))
 	}
 	return
+}
+
+// CollectTo collects the stream elements into a given slice.
+func (s *baseStream[T]) CollectTo(target []T) []T {
+	if s == nil {
+		return target
+	}
+
+	// nil target
+	if target == nil {
+		return []T{}
+	}
+
+	for s.next() {
+		v := s.get()
+		target = append(target, v.(T))
+	}
+	return target
 }
 
 // Reduce performs a reduction on the elements of this stream,

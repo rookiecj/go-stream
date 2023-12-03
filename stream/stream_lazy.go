@@ -14,29 +14,46 @@ var (
 type Stream[T any] interface {
 	Source[T]
 
+	// Filter returns a stream consisting of the elements of this stream that match the given predicate.
 	Filter(filter func(T) bool) Stream[T]
 
+	// Map returns a stream consisting of the results of applying the given function to the elements of this stream.
 	Map(mapf func(T) T) Stream[T]
+	// MapAny returns a stream consisting of the results of applying the given function to the elements of this stream.
+	// the function return any type.
 	MapAny(mapf func(T) any) Stream[any]
+	// MapIndex returns a stream consisting of the results of applying the given function to the elements of this stream.
+	// the function is given the index of the element.
 	MapIndex(mapf func(int, T) T) Stream[T]
+	// MapIndexAny returns a stream consisting of the results of applying the given function to the elements of this stream.
+	// the function return any type and is given the index of the element.
 	MapIndexAny(mapf func(int, T) any) Stream[any]
 
+	// FlatMapConcat returns a stream consisting of the results of
+	// replacing each element of this stream with the contents of a mapped stream produced by applying the provided mapping function to each element.
 	FlatMapConcat(f func(T) Source[T]) Stream[T]
 	FlatMapConcatAny(f func(T) Source[any]) Stream[any]
 
+	// Take returns a stream consisting of the first n elements of this stream.
 	Take(n int) Stream[T]
+	// Skip returns a stream consisting of the remaining elements of this stream after discarding the first n elements of the stream.
 	Skip(n int) Stream[T]
 
+	// Distinct returns a stream consisting of the subsequent distinct elements of this stream.
 	Distinct() Stream[T]
+	// DistinctBy returns a stream consisting of the subsequent distinct elements of this stream.
 	DistinctBy(cmp func(old T, new T) bool) Stream[T]
 
+	// ZipWith returns a stream consisting of appling the given function to the elements of this stream and another stream.
 	ZipWith(other Source[T], zipf func(T, T) T) Stream[T]
 	ZipWithAny(other Source[any], zipf func(T, any) any) Stream[any]
 	ZipWithPrev(zipf func(prev T, ele T) T) Stream[T]
 
+	// Scan returns a stream consisting of the accumlated results of applying the given function to the elements of this stream.
 	Scan(init T, accumf func(acc T, ele T) T) Stream[T]
 	ScanAny(init any, accumf func(acc any, ele T) any) Stream[any]
 
+	// OnEach returns a stream do nothing but visit each element of this stream.
 	OnEach(visit func(v T)) Stream[T]
 
 	Collector[T]
@@ -45,15 +62,17 @@ type Stream[T any] interface {
 // Source is source of a stream.
 type Source[T any] interface {
 
-	// Next는 element가 존재하는지 여부를 반환한다.
+	// Next returns true if the stream has more elements.
 	Next() bool
 
-	// Next에 의해서 확인한 element을 반환한다.
-	// 호출시마다 동일한 값을 리턴한다.
+	// Get returns the next element in the stream.
+	// should return same value if called multiple times.
 	Get() T
 }
 
 // terminal operations
+
+// Collector is a terminal operation that collects the stream elements into a container.
 type Collector[T any] interface {
 	ForEach(visit func(ele T))
 	ForEachIndex(visit func(int, T))
@@ -80,7 +99,10 @@ type baseStream[T any] struct {
 	get   func() any
 }
 
+//
 // source operations
+//
+
 func (s *baseStream[T]) Next() bool {
 	if s == nil {
 		return false
@@ -106,11 +128,11 @@ func (s *baseStream[T]) Filter(filter func(T) bool) Stream[T] {
 	if s == nil {
 		return s
 	}
-	downstream := new(baseStream[T])
-	downstream.idx = -1
-	downstream.next = func() bool {
+	filterstream := new(baseStream[T])
+	filterstream.idx = -1
+	filterstream.next = func() bool {
 		for s.next() {
-			downstream.idx++
+			filterstream.idx++
 			if filter(s.get().(T)) {
 				return true
 			}
@@ -118,51 +140,31 @@ func (s *baseStream[T]) Filter(filter func(T) bool) Stream[T] {
 		return false
 	}
 
-	downstream.get = func() any {
+	filterstream.get = func() any {
 		return s.get()
 	}
-	return downstream
+	return filterstream
 }
-
-//
-//func (stream *baseStream[T]) FilterAny(filter func(any) bool) Stream[any] {
-//	downstream := new(baseStream[any])
-//	downstream.idx = -1
-//	downstream.next = func() bool {
-//		for stream.next() {
-//			downstream.idx++
-//			if filter(stream.get()) {
-//				return true
-//			}
-//		}
-//		return true
-//	}
-//
-//	downstream.get = func() any {
-//		return stream.get()
-//	}
-//	return downstream
-//}
 
 func (s *baseStream[T]) Map(mapf func(T) T) Stream[T] {
 	if s == nil {
 		return s
 	}
 
-	downstream := new(baseStream[T])
-	downstream.idx = -1
-	downstream.next = func() bool {
+	mapstream := new(baseStream[T])
+	mapstream.idx = -1
+	mapstream.next = func() bool {
 		if s.next() {
-			downstream.idx++
+			mapstream.idx++
 			return true
 		}
 		return false
 	}
 
-	downstream.get = func() any {
+	mapstream.get = func() any {
 		return mapf(s.get().(T))
 	}
-	return downstream
+	return mapstream
 }
 
 func (s *baseStream[T]) MapAny(mapf func(T) any) Stream[any] {
@@ -171,20 +173,20 @@ func (s *baseStream[T]) MapAny(mapf func(T) any) Stream[any] {
 	}
 
 	// T -> any
-	downstream := new(baseStream[any])
-	downstream.idx = -1
-	downstream.next = func() bool {
+	mapstream := new(baseStream[any])
+	mapstream.idx = -1
+	mapstream.next = func() bool {
 		if s.next() {
-			downstream.idx++
+			mapstream.idx++
 			return true
 		}
 		return false
 	}
 
-	downstream.get = func() any {
+	mapstream.get = func() any {
 		return mapf(s.get().(T))
 	}
-	return downstream
+	return mapstream
 }
 
 // MapIndex returns a stream consisting of the results of applying the given function to the elements of this stream.
@@ -193,19 +195,19 @@ func (s *baseStream[T]) MapIndex(mapf func(int, T) T) Stream[T] {
 		return s
 	}
 
-	downstream := new(baseStream[T])
-	downstream.idx = -1
-	downstream.next = func() bool {
+	mapstream := new(baseStream[T])
+	mapstream.idx = -1
+	mapstream.next = func() bool {
 		if s.next() {
-			downstream.idx++
+			mapstream.idx++
 			return true
 		}
 		return false
 	}
-	downstream.get = func() any {
-		return mapf(downstream.idx, s.get().(T))
+	mapstream.get = func() any {
+		return mapf(mapstream.idx, s.get().(T))
 	}
-	return downstream
+	return mapstream
 }
 
 // MapIndexAny returns a stream consisting of the results of applying the given function to the elements of this stream.
@@ -214,19 +216,19 @@ func (s *baseStream[T]) MapIndexAny(mapf func(int, T) any) Stream[any] {
 		return nilAnyStream
 	}
 
-	downstream := new(baseStream[any])
-	downstream.idx = -1
-	downstream.next = func() bool {
+	mapstream := new(baseStream[any])
+	mapstream.idx = -1
+	mapstream.next = func() bool {
 		if s.next() {
-			downstream.idx++
+			mapstream.idx++
 			return true
 		}
 		return false
 	}
-	downstream.get = func() any {
-		return mapf(downstream.idx, s.get().(T))
+	mapstream.get = func() any {
+		return mapf(mapstream.idx, s.get().(T))
 	}
-	return downstream
+	return mapstream
 }
 
 // FlatMapConcat returns a stream consisting of the results of
@@ -237,26 +239,26 @@ func (s *baseStream[T]) FlatMapConcat(fmap func(ele T) Source[T]) Stream[T] {
 		return s
 	}
 
-	downstream := new(baseStream[T])
-	downstream.idx = -1
-	var cursource Source[T]
-	downstream.next = func() bool {
+	fmapstream := new(baseStream[T])
+	fmapstream.idx = -1
+	var source Source[T]
+	fmapstream.next = func() bool {
 	loop:
-		if cursource != nil && cursource.Next() {
-			downstream.idx++
+		if source != nil && source.Next() {
+			fmapstream.idx++
 			return true
 		}
 		for s.next() {
-			cursource = fmap(s.get().(T))
+			source = fmap(s.get().(T))
 			goto loop
 		}
 		return false
 	}
 
-	downstream.get = func() any {
-		return cursource.Get()
+	fmapstream.get = func() any {
+		return source.Get()
 	}
-	return downstream
+	return fmapstream
 }
 
 func (s *baseStream[T]) FlatMapConcatAny(fmap func(ele T) Source[any]) Stream[any] {
@@ -264,26 +266,26 @@ func (s *baseStream[T]) FlatMapConcatAny(fmap func(ele T) Source[any]) Stream[an
 		return nilAnyStream
 	}
 
-	downstream := new(baseStream[any])
-	downstream.idx = -1
-	var astream Source[any]
-	downstream.next = func() bool {
+	fmapstream := new(baseStream[any])
+	fmapstream.idx = -1
+	var source Source[any]
+	fmapstream.next = func() bool {
 	loop:
-		if astream != nil && astream.Next() {
-			downstream.idx++
+		if source != nil && source.Next() {
+			fmapstream.idx++
 			return true
 		}
 		for s.next() {
-			astream = fmap(s.get().(T))
+			source = fmap(s.get().(T))
 			goto loop
 		}
 		return false
 	}
 
-	downstream.get = func() any {
-		return astream.Get()
+	fmapstream.get = func() any {
+		return source.Get()
 	}
-	return downstream
+	return fmapstream
 }
 
 // Take returns a stream consisting of the first n elements of this stream.
@@ -292,19 +294,19 @@ func (s *baseStream[T]) Take(n int) Stream[T] {
 		return s
 	}
 
-	downstream := new(baseStream[T])
-	downstream.idx = -1
-	downstream.next = func() bool {
-		if downstream.idx+1 == n {
+	takestream := new(baseStream[T])
+	takestream.idx = -1
+	takestream.next = func() bool {
+		if takestream.idx+1 == n {
 			return false
 		}
-		downstream.idx++
+		takestream.idx++
 		return s.next()
 	}
-	downstream.get = func() any {
+	takestream.get = func() any {
 		return s.get()
 	}
-	return downstream
+	return takestream
 }
 
 // Skip returns a stream consisting of the remaining elements of this stream after discarding the first n elements of the stream.
@@ -313,21 +315,21 @@ func (s *baseStream[T]) Skip(n int) Stream[T] {
 		return s
 	}
 
-	downstream := new(baseStream[T])
-	downstream.idx = -1
-	downstream.next = func() bool {
-		for downstream.idx+1 < n {
+	skipstream := new(baseStream[T])
+	skipstream.idx = -1
+	skipstream.next = func() bool {
+		for skipstream.idx+1 < n {
 			if !s.next() {
 				return false
 			}
-			downstream.idx++
+			skipstream.idx++
 		}
 		return s.next()
 	}
-	downstream.get = func() any {
+	skipstream.get = func() any {
 		return s.get()
 	}
-	return downstream
+	return skipstream
 }
 
 // Distinct returns a stream consisting of the subsequent distinct elements of this stream.
@@ -351,12 +353,12 @@ func (s *baseStream[T]) DistinctBy(cmp func(old, new T) bool) Stream[T] {
 		return s
 	}
 
-	downstream := new(baseStream[T])
+	distinctstream := new(baseStream[T])
 	var old T
-	downstream.idx = -1
-	downstream.next = func() bool {
+	distinctstream.idx = -1
+	distinctstream.next = func() bool {
 		for s.next() {
-			downstream.idx++
+			distinctstream.idx++
 			v := s.get().(T)
 			if !cmp(old, v) {
 				old = v
@@ -366,10 +368,10 @@ func (s *baseStream[T]) DistinctBy(cmp func(old, new T) bool) Stream[T] {
 		}
 		return false
 	}
-	downstream.get = func() any {
+	distinctstream.get = func() any {
 		return old
 	}
-	return downstream
+	return distinctstream
 }
 
 // ZipWith returns a stream consisting of appling the given function to the elements of this stream and another stream.
@@ -378,19 +380,19 @@ func (s *baseStream[T]) ZipWith(other Source[T], zipf func(T, T) T) Stream[T] {
 		return s
 	}
 
-	downstream := new(baseStream[T])
-	downstream.idx = -1
-	downstream.next = func() bool {
+	zipstream := new(baseStream[T])
+	zipstream.idx = -1
+	zipstream.next = func() bool {
 		if s.next() && other.Next() {
-			downstream.idx++
+			zipstream.idx++
 			return true
 		}
 		return false
 	}
-	downstream.get = func() any {
+	zipstream.get = func() any {
 		return zipf(s.get().(T), other.Get())
 	}
-	return downstream
+	return zipstream
 }
 
 // ZipWithAny returns a stream consisting of appling the given function to the elements of this stream and another stream.
@@ -399,19 +401,19 @@ func (s *baseStream[T]) ZipWithAny(other Source[any], zipf func(T, any) any) Str
 		return nilAnyStream
 	}
 
-	downstream := new(baseStream[any])
-	downstream.idx = -1
-	downstream.next = func() bool {
+	zipstream := new(baseStream[any])
+	zipstream.idx = -1
+	zipstream.next = func() bool {
 		if s.next() && other.Next() {
-			downstream.idx++
+			zipstream.idx++
 			return true
 		}
 		return false
 	}
-	downstream.get = func() any {
+	zipstream.get = func() any {
 		return zipf(s.get().(T), other.Get())
 	}
-	return downstream
+	return zipstream
 }
 
 // ZipWithPrev returns a stream consisting of applying the given function to
@@ -422,23 +424,23 @@ func (s *baseStream[T]) ZipWithPrev(zipf func(prev T, ele T) T) Stream[T] {
 		return s
 	}
 
-	downstream := new(baseStream[T])
-	downstream.idx = -1
+	zipstream := new(baseStream[T])
+	zipstream.idx = -1
 	var prev T
-	downstream.next = func() bool {
+	zipstream.next = func() bool {
 		if s.next() {
-			downstream.idx++
+			zipstream.idx++
 			return true
 		}
 		return false
 	}
-	downstream.get = func() any {
+	zipstream.get = func() any {
 		v := s.get().(T)
 		result := zipf(prev, v)
 		prev = v
 		return result
 	}
-	return downstream
+	return zipstream
 }
 
 // Scan returns a stream consisting of the accumlated results of applying the given function to the elements of this stream.
@@ -449,21 +451,21 @@ func (s *baseStream[T]) Scan(init T, accumf func(acc T, ele T) T) Stream[T] {
 		return s
 	}
 
-	downstream := new(baseStream[T])
-	downstream.idx = -1
+	scanstream := new(baseStream[T])
+	scanstream.idx = -1
 	acc := init
-	downstream.next = func() bool {
+	scanstream.next = func() bool {
 		if s.next() {
-			downstream.idx++
+			scanstream.idx++
 			return true
 		}
 		return false
 	}
-	downstream.get = func() any {
+	scanstream.get = func() any {
 		acc = accumf(acc, s.get().(T))
 		return acc
 	}
-	return downstream
+	return scanstream
 }
 
 func (s *baseStream[T]) ScanAny(init any, accumf func(acc any, ele T) any) Stream[any] {
@@ -471,21 +473,21 @@ func (s *baseStream[T]) ScanAny(init any, accumf func(acc any, ele T) any) Strea
 		return nilAnyStream
 	}
 
-	downstream := new(baseStream[any])
-	downstream.idx = -1
+	scanstream := new(baseStream[any])
+	scanstream.idx = -1
 	acc := init
-	downstream.next = func() bool {
+	scanstream.next = func() bool {
 		if s.next() {
-			downstream.idx++
+			scanstream.idx++
 			return true
 		}
 		return false
 	}
-	downstream.get = func() any {
+	scanstream.get = func() any {
 		acc = accumf(acc, s.get().(T))
 		return acc
 	}
-	return downstream
+	return scanstream
 }
 
 // OnEach returns a stream do nothing but visit each element of this stream.
@@ -494,21 +496,21 @@ func (s *baseStream[T]) OnEach(visit func(v T)) Stream[T] {
 		return s
 	}
 
-	downstream := new(baseStream[T])
-	downstream.idx = -1
-	downstream.next = func() bool {
+	oneachstream := new(baseStream[T])
+	oneachstream.idx = -1
+	oneachstream.next = func() bool {
 		if s.next() {
-			downstream.idx++
+			oneachstream.idx++
 			return true
 		}
 		return false
 	}
-	downstream.get = func() any {
+	oneachstream.get = func() any {
 		v := s.get()
 		visit(v.(T))
 		return v
 	}
-	return downstream
+	return oneachstream
 }
 
 //

@@ -1070,3 +1070,161 @@ func Test_baseStream_CollectTo(t *testing.T) {
 		})
 	}
 }
+
+func Test_baseStream_All(t *testing.T) {
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+		{"e"},
+	}
+
+	type args[T any] struct {
+		predicate func(T) bool
+	}
+	type testCase[T any] struct {
+		name string
+		s    Stream[T]
+		args args[T]
+		want bool
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "empty source - false",
+			s:    FromSlice([]myStruct{}),
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return true
+				},
+			},
+			want: false,
+		},
+		{
+			name: "all true - true",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return true
+				},
+			},
+			want: true,
+		},
+		{
+			name: "some true - false",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return ele.Name == "e"
+				},
+			},
+			want: false,
+		},
+		{
+			name: "some false - false",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return ele.Name == "e"
+				},
+			},
+			want: false,
+		},
+		{
+			name: "all false - false",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return false
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.All(tt.args.predicate); got != tt.want {
+				t.Errorf("All() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_baseStream_Any(t *testing.T) {
+	arr1 := []myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+		{"e"},
+	}
+
+	type args[T any] struct {
+		predicate func(T) bool
+	}
+	type testCase[T any] struct {
+		name string
+		s    Stream[T]
+		args args[T]
+		want bool
+	}
+	tests := []testCase[myStruct]{
+		{
+			name: "empty source - false",
+			s:    FromSlice([]myStruct{}),
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return true
+				},
+			},
+			want: false,
+		},
+		{
+			name: "all true - true",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return true
+				},
+			},
+			want: true,
+		},
+		{
+			name: "some true - true",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return ele.Name == "e"
+				},
+			},
+			want: true,
+		},
+		{
+			name: "some false - true",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return ele.Name == "e"
+				},
+			},
+			want: true,
+		},
+		{
+			name: "all false - false",
+			s:    FromSlice(arr1),
+			args: args[myStruct]{
+				predicate: func(ele myStruct) bool {
+					return false
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.Any(tt.args.predicate); got != tt.want {
+				t.Errorf("Any() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

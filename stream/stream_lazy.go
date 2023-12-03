@@ -9,6 +9,8 @@ var (
 	nilAnyStream *baseStream[any]
 )
 
+type RecoverFunc func()
+
 // Stream is lazy, the operations are not executed until terminal operationa are called.
 // and it is not thread safe
 type Stream[T any] interface {
@@ -65,6 +67,10 @@ type Stream[T any] interface {
 
 	// OnEach returns a stream do nothing but visit each element of this stream.
 	OnEach(visit func(v T)) Stream[T]
+
+	// OnRecover returns a stream that recovers from a panic by calling the given function.
+	// the last call of OnRecover is applied when the stream is consumed.
+	OnRecover(onerror RecoverFunc) Stream[T]
 
 	Collector[T]
 }
@@ -134,10 +140,11 @@ type Collector[T any] interface {
 }
 
 type baseStream[T any] struct {
-	idx   int // full index
-	limit int // -1, unlimited or unknown
-	next  func() bool
-	get   func() any
+	idx          int // full index
+	limit        int // -1, unlimited or unknown
+	next         func() bool
+	get          func() any
+	getonrecover func() RecoverFunc
 }
 
 //
@@ -184,6 +191,9 @@ func (s *baseStream[T]) Filter(filter func(T) bool) Stream[T] {
 	filterstream.get = func() any {
 		return s.get()
 	}
+	filterstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
+	}
 	return filterstream
 }
 
@@ -204,6 +214,9 @@ func (s *baseStream[T]) Map(mapf func(T) T) Stream[T] {
 
 	mapstream.get = func() any {
 		return mapf(s.get().(T))
+	}
+	mapstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
 	}
 	return mapstream
 }
@@ -227,6 +240,9 @@ func (s *baseStream[T]) MapAny(mapf func(T) any) Stream[any] {
 	mapstream.get = func() any {
 		return mapf(s.get().(T))
 	}
+	mapstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
+	}
 	return mapstream
 }
 
@@ -248,6 +264,9 @@ func (s *baseStream[T]) MapIndex(mapf func(int, T) T) Stream[T] {
 	mapstream.get = func() any {
 		return mapf(mapstream.idx, s.get().(T))
 	}
+	mapstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
+	}
 	return mapstream
 }
 
@@ -268,6 +287,9 @@ func (s *baseStream[T]) MapIndexAny(mapf func(int, T) any) Stream[any] {
 	}
 	mapstream.get = func() any {
 		return mapf(mapstream.idx, s.get().(T))
+	}
+	mapstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
 	}
 	return mapstream
 }
@@ -299,6 +321,9 @@ func (s *baseStream[T]) FlatMapConcat(fmap func(ele T) Source[T]) Stream[T] {
 	fmapstream.get = func() any {
 		return source.Get()
 	}
+	fmapstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
+	}
 	return fmapstream
 }
 
@@ -326,6 +351,9 @@ func (s *baseStream[T]) FlatMapConcatAny(fmap func(ele T) Source[any]) Stream[an
 	fmapstream.get = func() any {
 		return source.Get()
 	}
+	fmapstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
+	}
 	return fmapstream
 }
 
@@ -346,6 +374,9 @@ func (s *baseStream[T]) Take(n int) Stream[T] {
 	}
 	takestream.get = func() any {
 		return s.get()
+	}
+	takestream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
 	}
 	return takestream
 }
@@ -369,6 +400,9 @@ func (s *baseStream[T]) Skip(n int) Stream[T] {
 	}
 	skipstream.get = func() any {
 		return s.get()
+	}
+	skipstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
 	}
 	return skipstream
 }
@@ -412,6 +446,9 @@ func (s *baseStream[T]) DistinctBy(cmp func(old, new T) bool) Stream[T] {
 	distinctstream.get = func() any {
 		return old
 	}
+	distinctstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
+	}
 	return distinctstream
 }
 
@@ -433,6 +470,9 @@ func (s *baseStream[T]) ZipWith(other Source[T], zipf func(T, T) T) Stream[T] {
 	zipstream.get = func() any {
 		return zipf(s.get().(T), other.Get())
 	}
+	zipstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
+	}
 	return zipstream
 }
 
@@ -453,6 +493,9 @@ func (s *baseStream[T]) ZipWithAny(other Source[any], zipf func(T, any) any) Str
 	}
 	zipstream.get = func() any {
 		return zipf(s.get().(T), other.Get())
+	}
+	zipstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
 	}
 	return zipstream
 }
@@ -481,6 +524,9 @@ func (s *baseStream[T]) ZipWithPrev(zipf func(prev T, ele T) T) Stream[T] {
 		prev = v
 		return result
 	}
+	zipstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
+	}
 	return zipstream
 }
 
@@ -506,6 +552,9 @@ func (s *baseStream[T]) Scan(init T, accumf func(acc T, ele T) T) Stream[T] {
 		acc = accumf(acc, s.get().(T))
 		return acc
 	}
+	scanstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
+	}
 	return scanstream
 }
 
@@ -527,6 +576,9 @@ func (s *baseStream[T]) ScanAny(init any, accumf func(acc any, ele T) any) Strea
 	scanstream.get = func() any {
 		acc = accumf(acc, s.get().(T))
 		return acc
+	}
+	scanstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
 	}
 	return scanstream
 }
@@ -551,7 +603,51 @@ func (s *baseStream[T]) OnEach(visit func(v T)) Stream[T] {
 		visit(v.(T))
 		return v
 	}
+	eachstream.getonrecover = func() RecoverFunc {
+		return s.getonrecover()
+	}
+
 	return eachstream
+}
+
+// OnRecover returns a stream that recovers from a panic by calling the given function.
+func (s *baseStream[T]) OnRecover(onrecover RecoverFunc) Stream[T] {
+	if s == nil {
+		return s
+	}
+
+	if onrecover == nil {
+		return s
+	}
+
+	errstream := new(baseStream[T])
+	errstream.idx = -1
+	errstream.next = func() bool {
+		// panic에서 recover할수는 있지만, 이후 downstream에서 runtime error가 발생하게된다.
+		// Collect하는 recover해야 한다.
+		//if onerror != nil {
+		//	defer onerror()
+		//}
+		if s.next() {
+			errstream.idx++
+			return true
+		}
+		return false
+	}
+	errstream.get = func() any {
+		//if onerror != nil {
+		//	defer onerror()
+		//}
+		return s.get()
+	}
+	errstream.getonrecover = func() RecoverFunc {
+		if onrecover != nil {
+			return onrecover
+		}
+		return s.getonrecover()
+	}
+
+	return errstream
 }
 
 //
@@ -561,6 +657,9 @@ func (s *baseStream[T]) OnEach(visit func(v T)) Stream[T] {
 func (s *baseStream[T]) ForEach(visit func(T)) {
 	if s == nil {
 		return
+	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
 	}
 
 	for s.next() {
@@ -572,6 +671,9 @@ func (s *baseStream[T]) ForEach(visit func(T)) {
 func (s *baseStream[T]) ForEachIndex(visit func(int, T)) {
 	if s == nil {
 		return
+	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
 	}
 
 	idx := -1
@@ -586,6 +688,9 @@ func (s *baseStream[T]) Collect() (target []T) {
 	if s == nil {
 		return []T{}
 	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
+	}
 
 	target = []T{}
 	for s.next() {
@@ -599,6 +704,9 @@ func (s *baseStream[T]) Collect() (target []T) {
 func (s *baseStream[T]) CollectTo(target []T) []T {
 	if s == nil {
 		return target
+	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
 	}
 
 	// nil target
@@ -622,6 +730,10 @@ func (s *baseStream[T]) Reduce(reducer func(acc T, ele T) T) (result T) {
 	if s == nil {
 		return
 	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
+	}
+
 	if s.next() {
 		result = s.get().(T)
 	} else {
@@ -643,6 +755,10 @@ func (s *baseStream[T]) ReduceAny(reducer func(acc any, ele T) any) (result any)
 	if s == nil {
 		return
 	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
+	}
+
 	if s.next() {
 		result = s.get()
 	} else {
@@ -662,6 +778,9 @@ func (s *baseStream[T]) Fold(init T, reducer func(acc T, ele T) T) (result T) {
 	if s == nil {
 		return init
 	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
+	}
 
 	result = init
 	for s.next() {
@@ -674,6 +793,9 @@ func (s *baseStream[T]) Fold(init T, reducer func(acc T, ele T) T) (result T) {
 func (s *baseStream[T]) FoldAny(init any, reducer func(acc any, ele T) any) (result any) {
 	if s == nil {
 		return init
+	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
 	}
 
 	result = init
@@ -689,6 +811,9 @@ func (s *baseStream[T]) Find(predicate func(T) bool) (found T, err error) {
 	if s == nil {
 		err = errors.New("upstream is nil")
 		return
+	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
 	}
 
 	for s.next() {
@@ -706,6 +831,9 @@ func (s *baseStream[T]) FindOr(predicate func(ele T) bool, defvalue T) T {
 	if s == nil {
 		return defvalue
 	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
+	}
 
 	for s.next() {
 		v := s.get().(T)
@@ -721,6 +849,9 @@ func (s *baseStream[T]) FindOr(predicate func(ele T) bool, defvalue T) T {
 func (s *baseStream[T]) FindIndex(predicate func(T) bool) int {
 	if s == nil {
 		return -1
+	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
 	}
 
 	idx := -1
@@ -740,6 +871,9 @@ func (s *baseStream[T]) FindLast(predicate func(T) bool) (found T, err error) {
 		err = errors.New("upstream is nil")
 		return
 	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
+	}
 
 	for s.next() {
 		v := s.get().(T)
@@ -756,6 +890,9 @@ func (s *baseStream[T]) FindLastOr(predicate func(T) bool, defvalue T) (found T)
 	if s == nil {
 		return defvalue
 	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
+	}
 
 	found = defvalue
 	for s.next() {
@@ -771,6 +908,9 @@ func (s *baseStream[T]) FindLastOr(predicate func(T) bool, defvalue T) (found T)
 func (s *baseStream[T]) FindLastIndex(predicate func(T) bool) (found int) {
 	if s == nil {
 		return -1
+	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
 	}
 
 	idx := -1
@@ -791,6 +931,9 @@ func (s *baseStream[T]) Count() (count int) {
 	if s == nil {
 		return 0
 	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
+	}
 
 	for s.next() {
 		count++
@@ -801,6 +944,9 @@ func (s *baseStream[T]) Count() (count int) {
 func (s *baseStream[T]) All(predicate func(T) bool) bool {
 	if s == nil {
 		return false
+	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
 	}
 
 	// for empty
@@ -817,6 +963,9 @@ func (s *baseStream[T]) All(predicate func(T) bool) bool {
 func (s *baseStream[T]) Any(predicate func(T) bool) bool {
 	if s == nil {
 		return false
+	}
+	if onerror := s.getonrecover(); onerror != nil {
+		defer onerror()
 	}
 
 	// for empty

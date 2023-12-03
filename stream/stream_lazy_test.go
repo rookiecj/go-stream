@@ -3,6 +3,7 @@ package stream
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -1225,6 +1226,86 @@ func Test_baseStream_Any(t *testing.T) {
 			if got := tt.s.Any(tt.args.predicate); got != tt.want {
 				t.Errorf("Any() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func Test_baseStream_OnRecover(t *testing.T) {
+
+	arr1 := []*myStruct{
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
+		{"e"},
+	}
+
+	nilarr := []*myStruct{
+		nil,
+	}
+
+	type args struct {
+		onerror func()
+	}
+	type testCase[T any] struct {
+		name string
+		s    Stream[T]
+		args args
+		want []T
+	}
+	tests := []testCase[*myStruct]{
+		{
+			name: "nil deference",
+			s: FromSlice(nilarr).Map(func(ele *myStruct) *myStruct {
+				return &myStruct{
+					Name: ele.Name,
+				}
+			}),
+			args: args{
+				onerror: func() {
+					if err := recover(); err != nil {
+						switch e := err.(type) {
+						case error:
+							errstr := e.Error()
+							if !strings.Contains(errstr, "nil pointer dereference") {
+								t.Fail()
+							}
+							// succ
+						default:
+							t.Fail()
+						}
+					}
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "interface conversion",
+			s: FromSlice(arr1).Map(func(ele *myStruct) *myStruct {
+				var iface any
+				return iface.(*myStruct)
+			}),
+			args: args{
+				onerror: func() {
+					if err := recover(); err != nil {
+						switch e := err.(type) {
+						case error:
+							errstr := e.Error()
+							if !strings.Contains(errstr, "interface conversion:") {
+								t.Fail()
+							}
+						default:
+							t.Fail()
+						}
+					}
+				},
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.s.OnRecover(tt.args.onerror).Collect()
 		})
 	}
 }

@@ -14,6 +14,19 @@ func CollectAs[T any](s Source[any]) (target []T) {
 	return target
 }
 
+// CollectAsSafe returns a slice containing the elements of this stream,
+// and error handler will be installed to handle any error
+func CollectAsSafe[T any](s Source[any], onerror func()) (target []T) {
+	if s == nil {
+		return []T{}
+	}
+	if onerror != nil {
+		defer onerror()
+	}
+
+	return CollectAs[T](s)
+}
+
 // CollectTo returns a slice containing the elements of this stream into target slice
 func CollectTo[T any](s Source[any], target []T) []T {
 	if s == nil {
@@ -25,6 +38,20 @@ func CollectTo[T any](s Source[any], target []T) []T {
 		target = append(target, v.(T))
 	}
 	return target
+}
+
+// CollectToSafe returns a slice containing the elements of this stream into target slice,
+// and error handler will be installed to handle any error
+func CollectToSafe[T any](s Source[any], target []T, onerror func()) []T {
+	if s == nil {
+		return target
+	}
+
+	if onerror != nil {
+		defer onerror()
+	}
+
+	return CollectTo(s, target)
 }
 
 // ForEachAs performs an action for each element of this stream.

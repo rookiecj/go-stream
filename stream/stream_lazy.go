@@ -90,6 +90,8 @@ type Collector[T any] interface {
 	FindLast(predicate func(T) bool) (found T, err error)
 	FindLastOr(predicate func(T) bool, defvalue T) (found T)
 	FindLastIndex(predicate func(T) bool) (found int)
+
+	Count() int
 }
 
 type baseStream[T any] struct {
@@ -496,21 +498,21 @@ func (s *baseStream[T]) OnEach(visit func(v T)) Stream[T] {
 		return s
 	}
 
-	oneachstream := new(baseStream[T])
-	oneachstream.idx = -1
-	oneachstream.next = func() bool {
+	eachstream := new(baseStream[T])
+	eachstream.idx = -1
+	eachstream.next = func() bool {
 		if s.next() {
-			oneachstream.idx++
+			eachstream.idx++
 			return true
 		}
 		return false
 	}
-	oneachstream.get = func() any {
+	eachstream.get = func() any {
 		v := s.get()
 		visit(v.(T))
 		return v
 	}
-	return oneachstream
+	return eachstream
 }
 
 //
@@ -717,4 +719,17 @@ func (s *baseStream[T]) FindLastIndex(predicate func(T) bool) (found int) {
 		}
 	}
 	return found
+}
+
+// Count returns the count of elements of this stream.
+// it does not consume the stream, specifically, it does not call Get().
+func (s *baseStream[T]) Count() (count int) {
+	if s == nil {
+		return 0
+	}
+
+	for s.Next() {
+		count++
+	}
+	return
 }

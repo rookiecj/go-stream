@@ -1,6 +1,6 @@
 # go-stream
 
-`go-stream` is a `Go` package to help processing stream of elements in more functional manner.
+`go-stream` is a `Go` package to help processing stream of elements in more declarative manner.
 
 `Stream` uses iterator pattern for visiting each element of a stream.
 It is lazy, which means the operations are not executed until terminal operation is called.
@@ -64,12 +64,13 @@ There 3 main operations:
 
 ### Builders
 
-Builder operations build a `Stream` from various sources like slice and array.
+Builder operations build a `Stream` from various sources like slice or array.
 
 - [X] FromSlice 
 - [X] FromVar
 - [X] FromChan (Experimental)
 - [X] FromSource
+- [X] Indexed - for indexed `Source`
 
 ### Intermediate operations
 
@@ -86,6 +87,7 @@ Intermediate operations generate new stream which consume data from upstream and
 - [X] Scan/ScanAny
 - [ ] Window
 - [ ] OnRecover (Experimental)
+- [X] ~~WithIndex~~ add an example for `Indexed` `Source`
 
 ### Terminal operations
 
@@ -114,8 +116,8 @@ Slightly more type safe functions are:
 - [X] add more Builders 
 - [X] Stream to interface
 - [ ] add more intermediate operations
-- [ ] add more terminal operations
+- [ ] add more safe terminal operations
 - [X] add doc
 - [X] add unittest
 - [ ] remove Source/Collector from Stream
-- [ ] add more safe terminal operations
+- [ ] make it more functional 

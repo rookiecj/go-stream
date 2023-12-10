@@ -96,6 +96,33 @@ func (c *todoSource) Get() Todo {
 	return c.todos[c.idx]
 }
 
+type todoSourceIndexed struct {
+	idx   int
+	todos []Todo
+}
+
+func newTodoSourceIndexed(todos []Todo) *todoSourceIndexed {
+	return &todoSourceIndexed{
+		idx:   -1,
+		todos: todos,
+	}
+}
+
+func (c *todoSourceIndexed) Next() bool {
+	if c.idx+1 < len(c.todos) {
+		c.idx++
+		return true
+	}
+	return false
+}
+
+func (c *todoSourceIndexed) Get() s.Indexed[Todo] {
+	return s.Indexed[Todo]{
+		Index: c.idx,
+		Value: c.todos[c.idx],
+	}
+}
+
 func main() {
 
 	todoS := newTodoSource(Todos)
@@ -105,6 +132,7 @@ func main() {
 		}).
 		Count()
 	fmt.Println("todos for user1 count=", length)
+	//todos for user1 count= 5
 
 	todosource := newTodoSource(Todos)
 	todos1 := s.FromSource[Todo](todosource).
@@ -112,6 +140,7 @@ func main() {
 			return ele.userId == 1
 		}).Collect()
 	fmt.Println("len(todos for user1)=", len(todos1))
+	//len(todos for user1)= 5
 
 	todosource = newTodoSource(Todos)
 	titlestream := s.FromSource[Todo](todosource).
@@ -125,4 +154,30 @@ func main() {
 	for _, title := range titles {
 		fmt.Println(title)
 	}
+	//et ea vero quia laudantium autem
+	//in quibusdam tempore odit est dolorem
+	//dolorum ut in voluptas mollitia et saepe quo animi
+	//voluptatem eligendi optio
+
+	todosourceIndexed := newTodoSourceIndexed(Todos)
+	s.FromSource[s.Indexed[Todo]](todosourceIndexed).
+		Filter(func(ele s.Indexed[Todo]) bool {
+			return ele.Value.userId == 2
+		}).
+		Map(func(ele s.Indexed[Todo]) s.Indexed[Todo] {
+			dup := ele.Value
+			dup.done = true
+			return s.Indexed[Todo]{
+				Index: ele.Index,
+				Value: dup,
+			}
+		}).
+		ForEach(func(ele s.Indexed[Todo]) {
+			fmt.Printf("%d: %s\n", ele.Index, ele.Value.title)
+		})
+	//5: et ea vero quia laudantium autem
+	//6: in quibusdam tempore odit est dolorem
+	//7: dolorum ut in voluptas mollitia et saepe quo animi
+	//8: voluptatem eligendi optio
+
 }

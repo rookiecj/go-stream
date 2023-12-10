@@ -32,7 +32,7 @@ func (c *myStructSource) Get() Indexed[myStruct] {
 	}
 }
 
-func TestSource_Indexed(t *testing.T) {
+func TestFromSource_Indexed(t *testing.T) {
 	var emptySlice []myStruct
 
 	arr := []myStruct{
@@ -99,7 +99,7 @@ func TestSource_Indexed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.args.s.Collect(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FromSlice() = %v, want %v", got, tt.want)
+				t.Errorf("FromSource() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -302,24 +302,27 @@ func (s *baseStream[T]) FlatMapConcat(fmap func(ele T) Source[T]) Stream[T] {
 		return s
 	}
 
-	fmapstream := new(baseStream[T])
+	type fmapStream[T any] struct {
+		baseStream[T]
+		source Source[T]
+	}
+	fmapstream := new(fmapStream[T])
 	fmapstream.idx = -1
-	var source Source[T]
 	fmapstream.next = func() bool {
 	loop:
-		if source != nil && source.Next() {
+		if fmapstream.source != nil && fmapstream.source.Next() {
 			fmapstream.idx++
 			return true
 		}
 		for s.next() {
-			source = fmap(s.get().(T))
+			fmapstream.source = fmap(s.get().(T))
 			goto loop
 		}
 		return false
 	}
 
 	fmapstream.get = func() any {
-		return source.Get()
+		return fmapstream.source.Get()
 	}
 	fmapstream.getonrecover = func() RecoverFunc {
 		return s.getonrecover()
@@ -332,24 +335,27 @@ func (s *baseStream[T]) FlatMapConcatAny(fmap func(ele T) Source[any]) Stream[an
 		return nilAnyStream
 	}
 
-	fmapstream := new(baseStream[any])
+	type fmapStream[T any] struct {
+		baseStream[any]
+		source Source[any]
+	}
+	fmapstream := new(fmapStream[any])
 	fmapstream.idx = -1
-	var source Source[any]
 	fmapstream.next = func() bool {
 	loop:
-		if source != nil && source.Next() {
+		if fmapstream.source != nil && fmapstream.source.Next() {
 			fmapstream.idx++
 			return true
 		}
 		for s.next() {
-			source = fmap(s.get().(T))
+			fmapstream.source = fmap(s.get().(T))
 			goto loop
 		}
 		return false
 	}
 
 	fmapstream.get = func() any {
-		return source.Get()
+		return fmapstream.source.Get()
 	}
 	fmapstream.getonrecover = func() RecoverFunc {
 		return s.getonrecover()
@@ -428,23 +434,27 @@ func (s *baseStream[T]) DistinctBy(cmp func(old, new T) bool) Stream[T] {
 		return s
 	}
 
-	distinctstream := new(baseStream[T])
-	var old T
+	type distinctStream[T any] struct {
+		baseStream[T]
+		old T
+	}
+
+	distinctstream := new(distinctStream[T])
 	distinctstream.idx = -1
 	distinctstream.next = func() bool {
 		for s.next() {
 			distinctstream.idx++
 			v := s.get().(T)
-			if !cmp(old, v) {
-				old = v
+			if !cmp(distinctstream.old, v) {
+				distinctstream.old = v
 				return true
 			}
-			old = v
+			distinctstream.old = v
 		}
 		return false
 	}
 	distinctstream.get = func() any {
-		return old
+		return distinctstream.old
 	}
 	distinctstream.getonrecover = func() RecoverFunc {
 		return s.getonrecover()
@@ -508,9 +518,13 @@ func (s *baseStream[T]) ZipWithPrev(zipf func(prev T, ele T) T) Stream[T] {
 		return s
 	}
 
-	zipstream := new(baseStream[T])
+	type zipStream[T any] struct {
+		baseStream[T]
+		prev T
+	}
+
+	zipstream := new(zipStream[T])
 	zipstream.idx = -1
-	var prev T
 	zipstream.next = func() bool {
 		if s.next() {
 			zipstream.idx++
@@ -520,8 +534,8 @@ func (s *baseStream[T]) ZipWithPrev(zipf func(prev T, ele T) T) Stream[T] {
 	}
 	zipstream.get = func() any {
 		v := s.get().(T)
-		result := zipf(prev, v)
-		prev = v
+		result := zipf(zipstream.prev, v)
+		zipstream.prev = v
 		return result
 	}
 	zipstream.getonrecover = func() RecoverFunc {
@@ -538,9 +552,13 @@ func (s *baseStream[T]) Scan(init T, accumf func(acc T, ele T) T) Stream[T] {
 		return s
 	}
 
-	scanstream := new(baseStream[T])
+	type scanStream[T any] struct {
+		baseStream[T]
+		acc T
+	}
+	scanstream := new(scanStream[T])
 	scanstream.idx = -1
-	acc := init
+	scanstream.acc = init
 	scanstream.next = func() bool {
 		if s.next() {
 			scanstream.idx++
@@ -549,8 +567,8 @@ func (s *baseStream[T]) Scan(init T, accumf func(acc T, ele T) T) Stream[T] {
 		return false
 	}
 	scanstream.get = func() any {
-		acc = accumf(acc, s.get().(T))
-		return acc
+		scanstream.acc = accumf(scanstream.acc, s.get().(T))
+		return scanstream.acc
 	}
 	scanstream.getonrecover = func() RecoverFunc {
 		return s.getonrecover()
@@ -563,9 +581,14 @@ func (s *baseStream[T]) ScanAny(init any, accumf func(acc any, ele T) any) Strea
 		return nilAnyStream
 	}
 
-	scanstream := new(baseStream[any])
+	type scanStream[T any] struct {
+		baseStream[any]
+		acc T
+	}
+
+	scanstream := new(scanStream[any])
 	scanstream.idx = -1
-	acc := init
+	scanstream.acc = init
 	scanstream.next = func() bool {
 		if s.next() {
 			scanstream.idx++
@@ -574,8 +597,8 @@ func (s *baseStream[T]) ScanAny(init any, accumf func(acc any, ele T) any) Strea
 		return false
 	}
 	scanstream.get = func() any {
-		acc = accumf(acc, s.get().(T))
-		return acc
+		scanstream.acc = accumf(scanstream.acc, s.get().(T))
+		return scanstream.acc
 	}
 	scanstream.getonrecover = func() RecoverFunc {
 		return s.getonrecover()

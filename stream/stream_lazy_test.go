@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
-	"time"
 )
 
 type myStruct struct {
@@ -153,12 +153,17 @@ func TestStream_FlatMapConCat(t *testing.T) {
 			args: args[myStruct]{
 				f: func(v myStruct) Source[myStruct] {
 					ch := make(chan myStruct, 0)
+
+					wg := sync.WaitGroup{}
+					wg.Add(1)
 					go func() {
+						wg.Done()
 						ch <- v
 						ch <- v
 						close(ch)
 					}()
-					time.Sleep(100 * time.Millisecond)
+					wg.Wait()
+
 					stream := FromChan[myStruct](ch)
 					return stream
 				},
@@ -169,13 +174,18 @@ func TestStream_FlatMapConCat(t *testing.T) {
 			name: "chan slice",
 			s: func() Stream[myStruct] {
 				ch := make(chan myStruct, 0)
+
+				wg := sync.WaitGroup{}
+				wg.Add(1)
 				go func() {
+					wg.Done()
 					for _, ele := range arr {
 						ch <- ele
 					}
 					close(ch)
 				}()
-				time.Sleep(100 * time.Millisecond)
+				wg.Wait()
+
 				stream := FromChan[myStruct](ch)
 				return stream
 			}(),
@@ -192,25 +202,35 @@ func TestStream_FlatMapConCat(t *testing.T) {
 			name: "chan chan",
 			s: func() Stream[myStruct] {
 				ch := make(chan myStruct, 0)
+
+				wg := sync.WaitGroup{}
+				wg.Add(1)
 				go func() {
+					wg.Done()
 					for _, ele := range arr {
 						ch <- ele
 					}
 					close(ch)
 				}()
-				time.Sleep(100 * time.Millisecond)
+				wg.Wait()
+
 				stream := FromChan[myStruct](ch)
 				return stream
 			}(),
 			args: args[myStruct]{
 				f: func(v myStruct) Source[myStruct] {
 					ch := make(chan myStruct, 0)
+
+					wg := sync.WaitGroup{}
+					wg.Add(1)
 					go func() {
+						wg.Done()
 						ch <- v
 						ch <- v
 						close(ch)
 					}()
-					time.Sleep(100 * time.Millisecond)
+					wg.Wait()
+
 					stream := FromChan[myStruct](ch)
 					return stream
 				},

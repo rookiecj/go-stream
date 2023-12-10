@@ -3,8 +3,8 @@ package stream
 import (
 	"fmt"
 	"reflect"
+	"sync"
 	"testing"
-	"time"
 )
 
 func TestFromSlice(t *testing.T) {
@@ -165,7 +165,11 @@ func TestFromChan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			wg := sync.WaitGroup{}
+
+			wg.Add(1)
 			go func() {
+				wg.Done()
 				if tt.args.ch != nil {
 					for _, ele := range tt.args.source {
 						tt.args.ch <- ele
@@ -173,11 +177,7 @@ func TestFromChan(t *testing.T) {
 					close(tt.args.ch)
 				}
 			}()
-
-			// github action filed
-			// panic: send on closed chann
-			// Give time to the goroutine to run before the collection
-			time.Sleep(100 * time.Millisecond)
+			wg.Wait()
 
 			if got := FromChan(tt.args.ch).Collect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromChan() = %v, want %v", got, tt.want)
@@ -251,7 +251,11 @@ func TestFromChan_ReadOnClosedChannel(t *testing.T) {
 	jobs := make(chan int, 0)
 	done := make(chan bool, 0)
 
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
 	go func() {
+		wg.Done()
 		fmt.Println("Source: Start")
 		for i := 0; i < worker; i++ {
 			//time.Sleep(100 * time.Millisecond)
@@ -262,8 +266,7 @@ func TestFromChan_ReadOnClosedChannel(t *testing.T) {
 		// close channel before move on
 		close(jobs)
 	}()
-
-	time.Sleep(1 * time.Second)
+	wg.Wait()
 
 	go func() {
 		s := FromChan(jobs)

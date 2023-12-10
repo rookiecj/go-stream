@@ -45,7 +45,7 @@ func TestFromSlice(t *testing.T) {
 			want: []myStruct{{"a"}, {"bb"}, {"c"}, {"ddd"}, {"e"}},
 		},
 		{
-			name: "slice fiter map",
+			name: "slice filter map",
 			args: args[myStruct]{
 				s: FromSlice(arr).Filter(func(v myStruct) bool {
 					return len(v.Name) == 1

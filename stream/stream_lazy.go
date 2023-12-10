@@ -11,8 +11,7 @@ var (
 
 type RecoverFunc func()
 
-// Stream is lazy, the operations are not executed until terminal operationa are called.
-// and it is not thread safe
+// Stream is lazy, the operations are not executed until terminal operations are called.
 type Stream[T any] interface {
 	Source[T]
 
@@ -84,6 +83,11 @@ type Source[T any] interface {
 	// Get returns the next element in the stream.
 	// should return same value if called multiple times.
 	Get() T
+}
+
+type Indexed[T any] struct {
+	Index int
+	Value T
 }
 
 // terminal operations

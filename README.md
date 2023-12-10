@@ -70,6 +70,7 @@ Builder operations build a `Stream` from various sources like slice or array.
 - [X] FromVar
 - [X] FromChan (Experimental)
 - [X] FromSource
+- [X] Indexed - for indexed `Source`
 
 ### Intermediate operations
 
@@ -86,7 +87,7 @@ Intermediate operations generate new stream which consume data from upstream and
 - [X] Scan/ScanAny
 - [ ] Window
 - [ ] OnRecover (Experimental)
-- [ ] WithIndex
+- [X] ~~WithIndex~~ add an example for `Indexed` `Source`
 
 ### Terminal operations
 

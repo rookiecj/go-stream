@@ -298,6 +298,11 @@ func (s *baseStream[T]) MapIndexAny(mapf func(int, T) any) Stream[any] {
 	return mapstream
 }
 
+type fmapStream[T any] struct {
+	baseStream[T]
+	source Source[T]
+}
+
 // FlatMapConcat returns a stream consisting of the results of
 // replacing each element of this stream with the contents of
 // a mapped stream produced by applying the provided mapping function to each element.
@@ -306,10 +311,6 @@ func (s *baseStream[T]) FlatMapConcat(fmap func(ele T) Source[T]) Stream[T] {
 		return s
 	}
 
-	type fmapStream[T any] struct {
-		baseStream[T]
-		source Source[T]
-	}
 	fmapstream := new(fmapStream[T])
 	fmapstream.idx = -1
 	fmapstream.next = func() bool {
@@ -339,10 +340,6 @@ func (s *baseStream[T]) FlatMapConcatAny(fmap func(ele T) Source[any]) Stream[an
 		return nilAnyStream
 	}
 
-	type fmapStream[T any] struct {
-		baseStream[any]
-		source Source[any]
-	}
 	fmapstream := new(fmapStream[any])
 	fmapstream.idx = -1
 	fmapstream.next = func() bool {
@@ -429,6 +426,11 @@ func (s *baseStream[T]) Distinct() Stream[T] {
 	})
 }
 
+type distinctStream[T any] struct {
+	baseStream[T]
+	old T
+}
+
 // DistinctBy returns a stream consisting of the subsequent distinct elements of this stream.
 // [a(0), a(1), b, c, a] => [a(0), b, c, a]
 // cmd is a function to compare two elements, return true if they are equal.
@@ -436,11 +438,6 @@ func (s *baseStream[T]) Distinct() Stream[T] {
 func (s *baseStream[T]) DistinctBy(cmp func(old, new T) bool) Stream[T] {
 	if s == nil {
 		return s
-	}
-
-	type distinctStream[T any] struct {
-		baseStream[T]
-		old T
 	}
 
 	distinctstream := new(distinctStream[T])
@@ -514,17 +511,17 @@ func (s *baseStream[T]) ZipWithAny(other Source[any], zipf func(T, any) any) Str
 	return zipstream
 }
 
+type zipStream[T any] struct {
+	baseStream[T]
+	prev T
+}
+
 // ZipWithPrev returns a stream consisting of applying the given function to
 // the elements of this stream and its previous element.
 // [a, b, c, d] => [f(nil, a), f(a, b), f(b, c), f(c, d)]
 func (s *baseStream[T]) ZipWithPrev(zipf func(prev T, ele T) T) Stream[T] {
 	if s == nil {
 		return s
-	}
-
-	type zipStream[T any] struct {
-		baseStream[T]
-		prev T
 	}
 
 	zipstream := new(zipStream[T])
@@ -548,6 +545,11 @@ func (s *baseStream[T]) ZipWithPrev(zipf func(prev T, ele T) T) Stream[T] {
 	return zipstream
 }
 
+type scanStream[T any] struct {
+	baseStream[T]
+	acc T
+}
+
 // Scan returns a stream consisting of the accumlated results of applying the given function to the elements of this stream.
 //
 //	with source=[1, 2, 3, 4], init=0 and func(acc, i) { acc + i } produces [1, 3, 6, 10]
@@ -556,10 +558,6 @@ func (s *baseStream[T]) Scan(init T, accumf func(acc T, ele T) T) Stream[T] {
 		return s
 	}
 
-	type scanStream[T any] struct {
-		baseStream[T]
-		acc T
-	}
 	scanstream := new(scanStream[T])
 	scanstream.idx = -1
 	scanstream.acc = init
@@ -583,11 +581,6 @@ func (s *baseStream[T]) Scan(init T, accumf func(acc T, ele T) T) Stream[T] {
 func (s *baseStream[T]) ScanAny(init any, accumf func(acc any, ele T) any) Stream[any] {
 	if s == nil {
 		return nilAnyStream
-	}
-
-	type scanStream[T any] struct {
-		baseStream[any]
-		acc T
 	}
 
 	scanstream := new(scanStream[any])
